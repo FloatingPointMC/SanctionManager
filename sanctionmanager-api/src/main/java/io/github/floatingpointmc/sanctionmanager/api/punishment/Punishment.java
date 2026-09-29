@@ -7,9 +7,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public interface Punishment {
-    int getId();
+    int getId() throws IllegalStateException;
 
-    int getRelId();
+    int getRelId() throws IllegalStateException;
 
     @NotNull UUID getTarget();
 
@@ -36,4 +36,16 @@ public interface Punishment {
     @Nullable String getReason();
 
     @NotNull Type getType();
+
+    interface Builder {
+        Builder executor(@Nullable UUID executor);
+
+        Builder executingTime(@NotNull LocalDateTime executingTime);
+
+        Builder expiryTime(@Nullable LocalDateTime expiryTime);
+
+        Builder reason(@Nullable String reason);
+
+        Punishment build();
+    }
 }

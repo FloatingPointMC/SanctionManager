@@ -3,11 +3,13 @@ package io.github.floatingpointmc.sanctionmanager.core;
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManager;
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManagerAPI;
 import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
+import io.github.floatingpointmc.sanctionmanager.api.punishment.PunishmentFactory;
 import io.github.floatingpointmc.sanctionmanager.core.cache.LocalPunishmentCache;
 import io.github.floatingpointmc.sanctionmanager.core.cache.PunishmentCache;
 import io.github.floatingpointmc.sanctionmanager.core.cache.PunishmentSerializer;
 import io.github.floatingpointmc.sanctionmanager.core.cache.RedisPunishmentCache;
 import io.github.floatingpointmc.sanctionmanager.core.config.StorageConfig;
+import io.github.floatingpointmc.sanctionmanager.core.factory.PunishmentFactoryCore;
 import io.github.floatingpointmc.sanctionmanager.core.management.PunishmentManager;
 import io.github.floatingpointmc.sanctionmanager.core.repository.BinaryPunishmentRepository;
 import io.github.floatingpointmc.sanctionmanager.core.repository.HikariPunishmentRepository;
@@ -23,6 +25,7 @@ import java.nio.file.Paths;
 
 public class SanctionManagerCore implements SanctionManager {
     private final @NotNull PunishmentManager punishmentManager;
+    private final @NotNull PunishmentFactory punishmentFactory;
     private final @NotNull PunishmentRepository repository;
     private final @NotNull PunishmentCache cache;
     private final @Nullable RedisClient redisClient;
@@ -31,27 +34,31 @@ public class SanctionManagerCore implements SanctionManager {
         ApiProvider.injectApi(false);
 
         if (storageConfig.isDatabaseEnabled()) {
-            this.repository = new HikariPunishmentRepository(storageConfig.getDatabaseConfig());
+            assert storageConfig.getDatabaseConfig() != null;
+            repository = new HikariPunishmentRepository(storageConfig.getDatabaseConfig());
         } else {
+            assert storageConfig.getBinaryDataDir() != null;
             Path dataDir = Paths.get(storageConfig.getBinaryDataDir());
-            this.repository = new BinaryPunishmentRepository(dataDir);
+            repository = new BinaryPunishmentRepository(dataDir);
         }
 
         if (storageConfig.isRedisEnabled()) {
-            this.redisClient = RedisClient.create(
+            assert storageConfig.getRedisConfig() != null;
+            redisClient = RedisClient.create(
                     "redis://" +
                     (storageConfig.getRedisConfig().getPassword().isEmpty() ? "" :
                             ":" + storageConfig.getRedisConfig().getPassword() + "@") +
                     storageConfig.getRedisConfig().getHost() + ":" +
                     storageConfig.getRedisConfig().getPort());
-            this.cache = new RedisPunishmentCache(this.redisClient, new PunishmentSerializer());
+            cache = new RedisPunishmentCache(redisClient, new PunishmentSerializer());
         } else {
-            this.redisClient = null;
-            this.cache = new LocalPunishmentCache();
+            redisClient = null;
+            cache = new LocalPunishmentCache();
         }
 
         PunishmentService service = new PunishmentService(cache, repository);
-        this.punishmentManager = new PunishmentManager(service);
+        punishmentManager = new PunishmentManager(service);
+        punishmentFactory = new PunishmentFactoryCore();
         SanctionManagerAPI.register(this);
     }
 
@@ -59,15 +66,21 @@ public class SanctionManagerCore implements SanctionManager {
         ApiProvider.injectApi(false);
         this.cache = cache;
         this.repository = repository;
-        this.redisClient = null;
+        redisClient = null;
         PunishmentService service = new PunishmentService(cache, repository);
-        this.punishmentManager = new PunishmentManager(service);
+        punishmentManager = new PunishmentManager(service);
+        punishmentFactory = new PunishmentFactoryCore();
         SanctionManagerAPI.register(this);
     }
 
     @Override
     public @NotNull PunishmentManagerAPI getPunishManager() {
         return punishmentManager;
+    }
+
+    @Override
+    public @NotNull PunishmentFactory getPunishmentFactory() {
+        return punishmentFactory;
     }
 
     public @NotNull PunishmentRepository getRepository() {

@@ -8,6 +8,7 @@ import io.github.floatingpointmc.sanctionmanager.core.cache.LocalPunishmentCache
 import io.github.floatingpointmc.sanctionmanager.core.config.DatabaseConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.RedisConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.StorageConfig;
+import io.github.floatingpointmc.sanctionmanager.core.factory.PunishmentFactoryCore;
 import io.github.floatingpointmc.sanctionmanager.core.model.PunishmentRecord;
 import io.github.floatingpointmc.sanctionmanager.core.repository.BinaryPunishmentRepository;
 import io.github.floatingpointmc.sanctionmanager.core.service.PunishmentService;
@@ -550,11 +551,11 @@ public class SanctionManagerCoreTest {
         Path dataDir = tempDir.resolve("sm-data-placeholder");
         BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
 
-        PunishmentRecord ban = new PunishmentRecord(
-                0, 0, UUID.randomUUID(), null, "Console",
-                LocalDateTime.now(), null, false, null, false, null,
-                false, null, "Placeholder test", Type.BAN
-        );
+        Punishment ban = new PunishmentFactoryCore().create(UUID.randomUUID(), "Console", Type.BAN)
+                .reason("Placeholder test")
+                .executingTime(LocalDateTime.now())
+                .build();
+
         repo.save(ban);
 
         String idPlaceholder = "%" + "id" + "%";

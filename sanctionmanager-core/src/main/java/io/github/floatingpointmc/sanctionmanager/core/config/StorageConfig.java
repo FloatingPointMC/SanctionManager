@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 @Data
 @Builder
@@ -13,9 +14,9 @@ import org.jetbrains.annotations.NotNull;
 public class StorageConfig {
     private boolean databaseEnabled;
     private boolean redisEnabled;
-    private @NotNull DatabaseConfig databaseConfig;
-    private @NotNull RedisConfig redisConfig;
-    private @NotNull String binaryDataDir;
+    private @Nullable DatabaseConfig databaseConfig;
+    private @Nullable RedisConfig redisConfig;
+    private @Nullable String binaryDataDir;
 
     public static @NotNull StorageConfig defaults() {
         return StorageConfig.builder()
