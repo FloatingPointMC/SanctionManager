@@ -15,7 +15,7 @@ import java.util.UUID;
 public class PunishmentBuilder implements Punishment.Builder {
     private final @NotNull UUID target;
     private @Nullable UUID executor;
-    private final @Nullable String operatorName;
+    private final @NotNull String operatorName;
     private @NotNull LocalDateTime executingTime = LocalDateTime.now();
     private @Nullable LocalDateTime expiryTime;
     private @Nullable String reason;

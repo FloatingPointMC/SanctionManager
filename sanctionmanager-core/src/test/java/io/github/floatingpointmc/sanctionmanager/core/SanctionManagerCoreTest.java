@@ -174,8 +174,8 @@ public class SanctionManagerCoreTest {
 
     @Test
     void testTypeOrdinary() {
-        assertEquals(0, Type.BAN.ordinary());
-        assertEquals(1, Type.MUTE.ordinary());
+        assertEquals(0, Type.BAN.ordinal());
+        assertEquals(1, Type.MUTE.ordinal());
     }
 
     @Test
@@ -573,6 +573,174 @@ public class SanctionManagerCoreTest {
         String result = template.replace("%id%", idValue).replace("%rel_id%", relIdValue);
         assertTrue(result.contains(idValue));
         assertTrue(result.contains(relIdValue));
+
+        repo.close();
+    }
+
+    @Test
+    void testQueryActiveBanCacheHit(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-cache-ban");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, target, null, "Console",
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Cache test", Type.BAN
+        );
+        service.addPunishment(ban);
+
+        Punishment first = service.queryActiveBan(target);
+        assertNotNull(first);
+
+        repo.close();
+        BinaryPunishmentRepository repo2 = new BinaryPunishmentRepository(dataDir);
+        PunishmentService service2 = new PunishmentService(localCache, repo2);
+
+        Punishment second = service2.queryActiveBan(target);
+        assertNotNull(second);
+        assertEquals(first.getId(), second.getId());
+
+        repo2.close();
+    }
+
+    @Test
+    void testQueryActiveBanCachesNull(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-cache-null");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        Punishment first = service.queryActiveBan(target);
+        assertNull(first);
+
+        Punishment second = service.queryActiveBan(target);
+        assertNull(second);
+
+        repo.close();
+    }
+
+    @Test
+    void testQueryBanMuteIsolation(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-isolation");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, target, null, "Console",
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Ban", Type.BAN
+        );
+        service.addPunishment(ban);
+
+        Punishment queriedBan = service.queryActiveBan(target);
+        Punishment queriedMute = service.queryActiveMute(target);
+
+        assertNotNull(queriedBan);
+        assertNull(queriedMute);
+        assertEquals(Type.BAN, queriedBan.getType());
+
+        repo.close();
+    }
+
+    @Test
+    void testCacheInvalidationOnAdd(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-invalidate-add");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        Punishment first = service.queryActiveBan(target);
+        assertNull(first);
+
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, target, null, "Console",
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "New ban", Type.BAN
+        );
+        service.addPunishment(ban);
+
+        Punishment second = service.queryActiveBan(target);
+        assertNotNull(second);
+
+        repo.close();
+    }
+
+    @Test
+    void testCacheInvalidationOnWithdraw(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-invalidate-withdraw");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, target, null, "Console",
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Ban", Type.BAN
+        );
+        service.addPunishment(ban);
+
+        Punishment active = service.queryActiveBan(target);
+        assertNotNull(active);
+
+        service.withdrawPunishment(ban.getId(), null);
+
+        Punishment afterWithdraw = service.queryActiveBan(target);
+        assertNull(afterWithdraw);
+
+        repo.close();
+    }
+
+    @Test
+    void testCacheInvalidationOnRemove(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-invalidate-remove");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, target, null, "Console",
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Ban", Type.BAN
+        );
+        service.addPunishment(ban);
+
+        Punishment active = service.queryActiveBan(target);
+        assertNotNull(active);
+
+        service.removePunishment(ban.getId());
+
+        Punishment afterRemove = service.queryActiveBan(target);
+        assertNull(afterRemove);
+
+        repo.close();
+    }
+
+    @Test
+    void testExpiredPunishmentNotReturned(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-expired");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, target, null, "Console",
+                LocalDateTime.now(), LocalDateTime.now().minusHours(1), false, null, false, null,
+                false, null, "Expired", Type.BAN
+        );
+        service.addPunishment(ban);
+
+        Punishment result = service.queryActiveBan(target);
+        assertNull(result);
 
         repo.close();
     }

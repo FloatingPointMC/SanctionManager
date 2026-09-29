@@ -207,7 +207,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
         String sql = type == Type.BAN ? SELECT_ACTIVE_BANS_BY_TARGET : SELECT_ACTIVE_MUTES_BY_TARGET;
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, type.ordinary());
+            ps.setInt(1, type.ordinal());
             ps.setString(2, target.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -259,7 +259,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
     private int insertPunishmentIndex(@NotNull Connection conn, int relId, @NotNull Type type) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(INSERT_PUNISHMENT, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, relId);
-            ps.setByte(2, (byte) type.ordinary());
+            ps.setByte(2, (byte) type.ordinal());
             ps.executeUpdate();
             try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                 if (generatedKeys.next()) {

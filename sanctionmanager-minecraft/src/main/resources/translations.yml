@@ -31,7 +31,7 @@ ban:
     - "\u00A77Reason: \u00A7f%reason%"
     - "\u00A77Find out more: \u00A7bhttps://github.com/FloatingPointMC/SanctionManager"
     - ""
-    - "\u00A77Ban ID: \u00A7f%id%"
+    - "\u00A77Ban ID: \u00A7f#%id%"
     - "\u00A77Sharing your Ban ID may affect the processing of your appeal!"
   temporary:
     - "\u00A7cYou are temporarily banned for \u00A7f%duration%\u00A7c from the server!"
@@ -47,7 +47,7 @@ mute:
     - "\u00A7cYou are permanently muted on the server."
     - ""
     - "\u00A77Find out more: \u00A7ehttps://github.com/FloatingPointMC/SanctionManager"
-    - "\u00A77Mute ID: \u00A7f%id%"
+    - "\u00A77Mute ID: \u00A7f#%id%"
     - "\u00A7c-------------------------------------------------------------------"
   temporary:
     - "\u00A7c-------------------------------------------------------------------"
@@ -56,5 +56,5 @@ mute:
     - ""
     - "\u00A77Find out more: \u00A7ehttps://github.com/FloatingPointMC/SanctionManager"
     - ""
-    - "\u00A77Mute ID: \u00A7f%id%"
+    - "\u00A77Mute ID: \u00A7f#%id%"
     - "\u00A7c-------------------------------------------------------------------"

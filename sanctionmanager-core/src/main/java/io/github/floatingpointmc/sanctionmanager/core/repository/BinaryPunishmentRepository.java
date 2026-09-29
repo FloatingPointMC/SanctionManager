@@ -147,7 +147,7 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
                 for (PunishmentRecord p : punishmentsById.values()) {
                     dos.writeInt(p.getId());
                     dos.writeInt(p.getRelId());
-                    dos.writeByte((byte) p.getType().ordinary());
+                    dos.writeByte((byte) p.getType().ordinal());
                 }
                 dos.flush();
             }

@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.sanctionmanager.core.service;
 
 import io.github.floatingpointmc.sanctionmanager.api.punishment.Punishment;
+import io.github.floatingpointmc.sanctionmanager.api.punishment.Type;
 import io.github.floatingpointmc.sanctionmanager.core.cache.PunishmentCache;
 import io.github.floatingpointmc.sanctionmanager.core.model.PunishmentRecord;
 import io.github.floatingpointmc.sanctionmanager.core.repository.PunishmentRepository;
@@ -9,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 
 public class PunishmentService {
@@ -45,38 +47,62 @@ public class PunishmentService {
     }
 
     public @Nullable Punishment queryActiveBan(@NotNull UUID target) {
-        LocalDateTime now = LocalDateTime.now();
-        Collection<Punishment> fromDb = repository.findActiveBansByTarget(target);
-        for (Punishment p : fromDb) {
-            cache.put(p);
-            if (isActive(p, now)) {
-                return p;
-            }
+        // Check cache first
+        Optional<Punishment> cached = cache.findActiveByTargetAndType(target, Type.BAN);
+        if (cached.isPresent()) {
+            return cached.get(); // May be null
         }
-        return null;
+        
+        // Cache miss - query DB
+        LocalDateTime now = LocalDateTime.now();
+        Collection<Punishment> fromDb = repository.findByTarget(target);
+        Punishment activeBan = null;
+        for (Punishment p : fromDb) {
+            if (p.getType() == Type.BAN && activeBan == null && isActive(p, now)) {
+                activeBan = p;
+            }
+            cache.put(p);
+        }
+        
+        // Cache result (including null)
+        cache.putActiveByTargetAndType(target, Type.BAN, activeBan);
+        return activeBan;
     }
 
     public @Nullable Punishment queryActiveMute(@NotNull UUID target) {
-        LocalDateTime now = LocalDateTime.now();
-        Collection<Punishment> fromDb = repository.findActiveMutesByTarget(target);
-        for (Punishment p : fromDb) {
-            cache.put(p);
-            if (isActive(p, now)) {
-                return p;
-            }
+        // Check cache first
+        Optional<Punishment> cached = cache.findActiveByTargetAndType(target, Type.MUTE);
+        if (cached.isPresent()) {
+            return cached.get(); // May be null
         }
-        return null;
+        
+        // Cache miss - query DB
+        LocalDateTime now = LocalDateTime.now();
+        Collection<Punishment> fromDb = repository.findByTarget(target);
+        Punishment activeMute = null;
+        for (Punishment p : fromDb) {
+            if (p.getType() == Type.MUTE && activeMute == null && isActive(p, now)) {
+                activeMute = p;
+            }
+            cache.put(p);
+        }
+        
+        // Cache result (including null)
+        cache.putActiveByTargetAndType(target, Type.MUTE, activeMute);
+        return activeMute;
     }
 
     public void addPunishment(@NotNull Punishment punishment) {
         repository.save(punishment);
         cache.put(punishment);
+        cache.invalidateByTargetAndType(punishment.getTarget(), punishment.getType());
     }
 
     public void updatePunishment(@NotNull Punishment punishment) {
         repository.update(punishment);
         cache.invalidate(punishment.getId());
         cache.put(punishment);
+        cache.invalidateByTargetAndType(punishment.getTarget(), punishment.getType());
     }
 
     public void withdrawPunishment(int id, @Nullable UUID withdrawnBy) {
@@ -91,8 +117,12 @@ public class PunishmentService {
     }
 
     public void removePunishment(int id) {
+        Punishment punishment = queryPunishment(id);
         repository.delete(id);
         cache.invalidate(id);
+        if (punishment != null) {
+            cache.invalidateByTargetAndType(punishment.getTarget(), punishment.getType());
+        }
     }
 
     private boolean isActive(@NotNull Punishment punishment, @NotNull LocalDateTime now) {
