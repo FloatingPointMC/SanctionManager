@@ -536,12 +536,12 @@ public class SanctionManagerCoreTest {
 
         service.addPunishment(ban);
 
-        Collection<Punishment> activeBans = service.queryActiveBans(target);
-        assertEquals(1, activeBans.size());
-        assertEquals(Type.BAN, activeBans.iterator().next().getType());
+        Punishment activeBan = service.queryActiveBan(target);
+        assertNotNull(activeBan);
+        assertEquals(Type.BAN, activeBan.getType());
 
-        Collection<Punishment> activeMutes = service.queryActiveMutes(target);
-        assertTrue(activeMutes.isEmpty());
+        Punishment activeMute = service.queryActiveMute(target);
+        assertNull(activeMute);
 
         repo.close();
     }

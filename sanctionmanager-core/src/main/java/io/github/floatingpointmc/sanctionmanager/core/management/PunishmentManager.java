@@ -31,13 +31,13 @@ public class PunishmentManager implements PunishmentManagerAPI {
     }
 
     @Override
-    public @NotNull Collection<Punishment> queryActiveBans(@NotNull UUID target) {
-        return service.queryActiveBans(target);
+    public @Nullable Punishment queryActiveBan(@NotNull UUID target) {
+        return service.queryActiveBan(target);
     }
 
     @Override
-    public @NotNull Collection<Punishment> queryActiveMutes(@NotNull UUID target) {
-        return service.queryActiveMutes(target);
+    public @Nullable Punishment queryActiveMute(@NotNull UUID target) {
+        return service.queryActiveMute(target);
     }
 
     @Override

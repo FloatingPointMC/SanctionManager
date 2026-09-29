@@ -12,9 +12,9 @@ public interface PunishmentManagerAPI {
 
     @NotNull Collection<Punishment> queryActivePunishments(@NotNull UUID target);
 
-    @NotNull Collection<Punishment> queryActiveBans(@NotNull UUID target);
+    @Nullable Punishment queryActiveBan(@NotNull UUID target);
 
-    @NotNull Collection<Punishment> queryActiveMutes(@NotNull UUID target);
+    @Nullable Punishment queryActiveMute(@NotNull UUID target);
 
     void addPunishment(@NotNull Punishment punishment);
 

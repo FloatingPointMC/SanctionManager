@@ -7,6 +7,7 @@ import io.github.floatingpointmc.sanctionmanager.core.repository.PunishmentRepos
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.UUID;
 
@@ -43,20 +44,28 @@ public class PunishmentService {
         return fromDb;
     }
 
-    public @NotNull Collection<Punishment> queryActiveBans(@NotNull UUID target) {
+    public @Nullable Punishment queryActiveBan(@NotNull UUID target) {
+        LocalDateTime now = LocalDateTime.now();
         Collection<Punishment> fromDb = repository.findActiveBansByTarget(target);
         for (Punishment p : fromDb) {
             cache.put(p);
+            if (isActive(p, now)) {
+                return p;
+            }
         }
-        return fromDb;
+        return null;
     }
 
-    public @NotNull Collection<Punishment> queryActiveMutes(@NotNull UUID target) {
+    public @Nullable Punishment queryActiveMute(@NotNull UUID target) {
+        LocalDateTime now = LocalDateTime.now();
         Collection<Punishment> fromDb = repository.findActiveMutesByTarget(target);
         for (Punishment p : fromDb) {
             cache.put(p);
+            if (isActive(p, now)) {
+                return p;
+            }
         }
-        return fromDb;
+        return null;
     }
 
     public void addPunishment(@NotNull Punishment punishment) {
@@ -84,5 +93,13 @@ public class PunishmentService {
     public void removePunishment(int id) {
         repository.delete(id);
         cache.invalidate(id);
+    }
+
+    private boolean isActive(@NotNull Punishment punishment, @NotNull LocalDateTime now) {
+        if (punishment.isWithdrawn()) return false;
+        if (punishment.isOverridden()) return false;
+        if (punishment.getOverriddenBy() != null) return false;
+        LocalDateTime expiryTime = punishment.getExpiryTime();
+        return expiryTime == null || expiryTime.isAfter(now);
     }
 }

@@ -113,10 +113,12 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
         boolean withdrawn = dis.readBoolean();
         UUID withdrawnBy = readNullableUuid(dis);
         String reason = readNullableString(dis);
-        return new PunishmentRecord(
+        PunishmentRecord record = new PunishmentRecord(
                 0, id, target, executor, operatorName, executingTime, expiryTime,
                 overridden, null, overriding, null, withdrawn, withdrawnBy, reason, type
         );
+        record.setProcessed(true);
+        return record;
     }
 
     private void saveToFile() {
@@ -286,6 +288,7 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
 
             record.setId(punishmentId);
             record.setRelId(relId);
+            record.setProcessed(true);
 
             saveToFile();
         } finally {
