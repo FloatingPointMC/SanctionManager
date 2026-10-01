@@ -6,11 +6,17 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Repository for managing player UUID ↔ Name mappings.
+ * Repository (Persistence Layer) for managing player UUID ↔ Name mappings.
+ * <p>
+ * In SanctionManager architecture:
+ * - Repository = Persistence (Database or File storage)
+ * - Cache = RAM or Redis (acceleration layer)
  * <p>
  * This repository is owned by the Minecraft layer and stores Minecraft-specific
  * player data. It does NOT use Core's storage infrastructure to maintain
  * clear domain boundaries.
+ * <p>
+ * PlayerRepository provides PERSISTENCE ONLY. For caching, use PlayerCache.
  */
 public interface PlayerRepository {
 

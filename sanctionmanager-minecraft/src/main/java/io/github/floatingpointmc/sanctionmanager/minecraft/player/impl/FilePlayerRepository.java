@@ -11,21 +11,21 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * File-based implementation of PlayerRepository.
+ * File-based implementation of PlayerRepository (Persistence Layer).
  * <p>
  * Stores player data in: {dataDir}/minecraft/players/players.dat
  * <p>
  * Format: Simple text file with "uuid:name" per line.
  * <p>
- * Uses in-memory cache for fast lookups, persists to file on save.
+ * This is PERSISTENCE ONLY. All data is stored in file and loaded on startup.
+ * For caching, use PlayerCache (not embedded in Repository).
  */
 public class FilePlayerRepository implements PlayerRepository {
     private final Path dataFile;
-    private final ConcurrentHashMap<UUID, String> uuidToName;
-    private final ConcurrentHashMap<String, UUID> nameToUuid;
+    private final Map<UUID, String> uuidToName;
+    private final Map<String, UUID> nameToUuid;
 
     public FilePlayerRepository(@NotNull String dataDir) {
         Path minecraftDir = Paths.get(dataDir, "minecraft", "players");
@@ -36,35 +36,43 @@ public class FilePlayerRepository implements PlayerRepository {
         }
 
         this.dataFile = minecraftDir.resolve("players.dat");
-        this.uuidToName = new ConcurrentHashMap<>();
-        this.nameToUuid = new ConcurrentHashMap<>();
+        this.uuidToName = new HashMap<>();
+        this.nameToUuid = new HashMap<>();
 
         load();
     }
 
     @Override
     public @Nullable UUID findUuidByName(@NotNull String name) {
-        return nameToUuid.get(normalizeName(name));
+        synchronized (nameToUuid) {
+            return nameToUuid.get(normalizeName(name));
+        }
     }
 
     @Override
     public @Nullable String findNameByUuid(@NotNull UUID uuid) {
-        return uuidToName.get(uuid);
+        synchronized (uuidToName) {
+            return uuidToName.get(uuid);
+        }
     }
 
     @Override
     public void save(@NotNull UUID uuid, @NotNull String name) {
         String normalizedName = normalizeName(name);
 
-        // Remove old name mapping if UUID had different name
-        String oldName = uuidToName.get(uuid);
-        if (oldName != null && !oldName.equalsIgnoreCase(name)) {
-            nameToUuid.remove(normalizeName(oldName));
-        }
+        synchronized (uuidToName) {
+            synchronized (nameToUuid) {
+                // Remove old name mapping if UUID had different name
+                String oldName = uuidToName.get(uuid);
+                if (oldName != null && !oldName.equalsIgnoreCase(name)) {
+                    nameToUuid.remove(normalizeName(oldName));
+                }
 
-        // Update in-memory maps
-        uuidToName.put(uuid, name);
-        nameToUuid.put(normalizedName, uuid);
+                // Update in-memory maps
+                uuidToName.put(uuid, name);
+                nameToUuid.put(normalizedName, uuid);
+            }
+        }
 
         // Persist to file
         persist();
@@ -73,8 +81,12 @@ public class FilePlayerRepository implements PlayerRepository {
     @Override
     public void close() {
         persist();
-        uuidToName.clear();
-        nameToUuid.clear();
+        synchronized (uuidToName) {
+            synchronized (nameToUuid) {
+                uuidToName.clear();
+                nameToUuid.clear();
+            }
+        }
     }
 
     private void load() {
@@ -110,16 +122,18 @@ public class FilePlayerRepository implements PlayerRepository {
     }
 
     private void persist() {
-        try (BufferedWriter writer = Files.newBufferedWriter(dataFile)) {
-            writer.write("# SanctionManager Player Data (UUID:Name)\n");
-            for (Map.Entry<UUID, String> entry : uuidToName.entrySet()) {
-                writer.write(entry.getKey().toString());
-                writer.write(":");
-                writer.write(entry.getValue());
-                writer.write("\n");
+        synchronized (uuidToName) {
+            try (BufferedWriter writer = Files.newBufferedWriter(dataFile)) {
+                writer.write("# SanctionManager Player Data (UUID:Name)\n");
+                for (Map.Entry<UUID, String> entry : uuidToName.entrySet()) {
+                    writer.write(entry.getKey().toString());
+                    writer.write(":");
+                    writer.write(entry.getValue());
+                    writer.write("\n");
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to persist player data to: " + dataFile, e);
             }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to persist player data to: " + dataFile, e);
         }
     }
 

@@ -64,13 +64,13 @@ public class MuteCommand extends AdminCommand {
             resolvedName = targetPlayer.getName();
         } else {
             // Player is offline - query PlayerRepository
-            targetUuid = manager.getPlayerRepository().findUuidByName(targetName);
+            targetUuid = manager.getPlayerService().findUuidByName(targetName);
             if (targetUuid == null) {
                 String errorMsg = translationConfig.get("error.player-not-found");
                 sender.sendMessage(errorMsg.replace("{0}", targetName));
                 return;
             }
-            resolvedName = manager.getPlayerRepository().findNameByUuid(targetUuid);
+            resolvedName = manager.getPlayerService().findNameByUuid(targetUuid);
             if (resolvedName == null) {
                 resolvedName = targetName; // Fallback to input name
             }

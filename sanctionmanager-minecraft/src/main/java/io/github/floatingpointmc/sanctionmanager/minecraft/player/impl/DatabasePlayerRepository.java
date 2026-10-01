@@ -7,45 +7,33 @@ import org.jetbrains.annotations.Nullable;
 
 import java.sql.*;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Database-based implementation of PlayerRepository.
+ * Database-based implementation of PlayerRepository (Persistence Layer).
  * <p>
  * Uses a separate table: sm_minecraft_players
  * <p>
  * This is SEPARATE from Core's punishment tables.
  * Minecraft owns player data; Core owns sanction data.
  * <p>
- * Uses in-memory cache for fast lookups.
+ * This is PERSISTENCE ONLY. Data survives server restarts.
+ * For caching, use PlayerCache (not embedded in Repository).
  */
 public class DatabasePlayerRepository implements PlayerRepository {
     private static final String TABLE_NAME = "sm_minecraft_players";
 
     private final HikariDataSource dataSource;
-    private final ConcurrentHashMap<UUID, String> uuidToName;
-    private final ConcurrentHashMap<String, UUID> nameToUuid;
 
     public DatabasePlayerRepository(@NotNull HikariDataSource dataSource) {
         this.dataSource = dataSource;
-        this.uuidToName = new ConcurrentHashMap<>();
-        this.nameToUuid = new ConcurrentHashMap<>();
-
         initializeTable();
-        loadCache();
     }
 
     @Override
     public @Nullable UUID findUuidByName(@NotNull String name) {
         String normalizedName = normalizeName(name);
 
-        // Check cache first
-        UUID cached = nameToUuid.get(normalizedName);
-        if (cached != null) {
-            return cached;
-        }
-
-        // Query database
+        // Query database directly (no cache in Repository layer)
         String sql = "SELECT uuid FROM " + TABLE_NAME + " WHERE LOWER(name) = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -53,13 +41,7 @@ public class DatabasePlayerRepository implements PlayerRepository {
             stmt.setString(1, normalizedName);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    UUID uuid = UUID.fromString(rs.getString("uuid"));
-                    // Update cache
-                    String actualName = findNameByUuid(uuid);
-                    if (actualName != null) {
-                        nameToUuid.put(normalizedName, uuid);
-                    }
-                    return uuid;
+                    return UUID.fromString(rs.getString("uuid"));
                 }
             }
         } catch (SQLException e) {
@@ -71,13 +53,7 @@ public class DatabasePlayerRepository implements PlayerRepository {
 
     @Override
     public @Nullable String findNameByUuid(@NotNull UUID uuid) {
-        // Check cache first
-        String cached = uuidToName.get(uuid);
-        if (cached != null) {
-            return cached;
-        }
-
-        // Query database
+        // Query database directly (no cache in Repository layer)
         String sql = "SELECT name FROM " + TABLE_NAME + " WHERE uuid = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -85,11 +61,7 @@ public class DatabasePlayerRepository implements PlayerRepository {
             stmt.setString(1, uuid.toString());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    String name = rs.getString("name");
-                    // Update cache
-                    uuidToName.put(uuid, name);
-                    nameToUuid.put(normalizeName(name), uuid);
-                    return name;
+                    return rs.getString("name");
                 }
             }
         } catch (SQLException e) {
@@ -101,18 +73,6 @@ public class DatabasePlayerRepository implements PlayerRepository {
 
     @Override
     public void save(@NotNull UUID uuid, @NotNull String name) {
-        String normalizedName = normalizeName(name);
-
-        // Remove old name mapping if UUID had different name
-        String oldName = uuidToName.get(uuid);
-        if (oldName != null && !oldName.equalsIgnoreCase(name)) {
-            nameToUuid.remove(normalizeName(oldName));
-        }
-
-        // Update cache
-        uuidToName.put(uuid, name);
-        nameToUuid.put(normalizedName, uuid);
-
         // Persist to database (UPSERT)
         String sql = "INSERT INTO " + TABLE_NAME + " (uuid, name, last_seen) VALUES (?, ?, ?) " +
                      "ON DUPLICATE KEY UPDATE name = ?, last_seen = ?";
@@ -136,8 +96,6 @@ public class DatabasePlayerRepository implements PlayerRepository {
 
     @Override
     public void close() {
-        uuidToName.clear();
-        nameToUuid.clear();
         // DataSource lifecycle managed by Core, not closed here
     }
 
@@ -154,24 +112,6 @@ public class DatabasePlayerRepository implements PlayerRepository {
             stmt.execute(sql);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize minecraft players table", e);
-        }
-    }
-
-    private void loadCache() {
-        String sql = "SELECT uuid, name FROM " + TABLE_NAME;
-
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                UUID uuid = UUID.fromString(rs.getString("uuid"));
-                String name = rs.getString("name");
-                uuidToName.put(uuid, name);
-                nameToUuid.put(normalizeName(name), uuid);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to load player cache from database", e);
         }
     }
 

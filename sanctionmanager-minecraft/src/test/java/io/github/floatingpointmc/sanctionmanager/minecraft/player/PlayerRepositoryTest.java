@@ -1,28 +1,38 @@
 package io.github.floatingpointmc.sanctionmanager.minecraft.player;
 
-import io.github.floatingpointmc.sanctionmanager.minecraft.player.impl.MemoryPlayerRepository;
+import io.github.floatingpointmc.sanctionmanager.minecraft.player.impl.FilePlayerRepository;
+import io.github.floatingpointmc.sanctionmanager.minecraft.player.impl.MemoryPlayerCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for PlayerRepository implementations.
+ * Tests for PlayerService (Repository + Cache architecture).
  * <p>
- * Verifies that UUID <-> Name mapping works correctly,
- * including case-insensitive name lookup and name changes.
+ * Verifies that UUID <-> Name mapping works correctly through the cache layer,
+ * including case-insensitive name lookup, name changes, and cache consistency.
  */
 class PlayerRepositoryTest {
 
-    private PlayerRepository repository;
+    private PlayerService service;
     private UUID testUuid;
     private String testName;
 
+    @TempDir
+    Path tempDir;
+
     @BeforeEach
     void setUp() {
-        repository = new MemoryPlayerRepository();
+        // Use File repository (persistent) + Memory cache for testing
+        PlayerRepository repository = new FilePlayerRepository(tempDir.toString());
+        PlayerCache cache = new MemoryPlayerCache();
+        service = new PlayerService(repository, cache);
+
         testUuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
         testName = "Steve";
     }
@@ -30,10 +40,10 @@ class PlayerRepositoryTest {
     @Test
     void testSaveAndFindByName() {
         // Save player data
-        repository.save(testUuid, testName);
+        service.save(testUuid, testName);
 
         // Find by name
-        UUID foundUuid = repository.findUuidByName(testName);
+        UUID foundUuid = service.findUuidByName(testName);
         assertNotNull(foundUuid, "UUID should be found");
         assertEquals(testUuid, foundUuid, "UUID should match");
     }
@@ -41,10 +51,10 @@ class PlayerRepositoryTest {
     @Test
     void testSaveAndFindByUuid() {
         // Save player data
-        repository.save(testUuid, testName);
+        service.save(testUuid, testName);
 
         // Find by UUID
-        String foundName = repository.findNameByUuid(testUuid);
+        String foundName = service.findNameByUuid(testUuid);
         assertNotNull(foundName, "Name should be found");
         assertEquals(testName, foundName, "Name should match");
     }
@@ -52,38 +62,38 @@ class PlayerRepositoryTest {
     @Test
     void testCaseInsensitiveNameLookup() {
         // Save player data
-        repository.save(testUuid, testName);
+        service.save(testUuid, testName);
 
         // Test various case combinations
-        assertEquals(testUuid, repository.findUuidByName("Steve"));
-        assertEquals(testUuid, repository.findUuidByName("steve"));
-        assertEquals(testUuid, repository.findUuidByName("STEVE"));
-        assertEquals(testUuid, repository.findUuidByName("StEvE"));
+        assertEquals(testUuid, service.findUuidByName("Steve"));
+        assertEquals(testUuid, service.findUuidByName("steve"));
+        assertEquals(testUuid, service.findUuidByName("STEVE"));
+        assertEquals(testUuid, service.findUuidByName("StEvE"));
     }
 
     @Test
     void testNameChange() {
         // Save initial name
-        repository.save(testUuid, "OldName");
-        assertEquals("OldName", repository.findNameByUuid(testUuid));
+        service.save(testUuid, "OldName");
+        assertEquals("OldName", service.findNameByUuid(testUuid));
 
         // Change name
-        repository.save(testUuid, "NewName");
+        service.save(testUuid, "NewName");
 
         // Verify new name is found
-        assertEquals("NewName", repository.findNameByUuid(testUuid));
-        assertEquals(testUuid, repository.findUuidByName("NewName"));
+        assertEquals("NewName", service.findNameByUuid(testUuid));
+        assertEquals(testUuid, service.findUuidByName("NewName"));
 
         // Old name should no longer resolve to this UUID
-        assertNull(repository.findUuidByName("OldName"),
+        assertNull(service.findUuidByName("OldName"),
             "Old name should not resolve after name change");
     }
 
     @Test
     void testUnknownPlayer() {
         // Try to find player that doesn't exist
-        assertNull(repository.findUuidByName("UnknownPlayer"));
-        assertNull(repository.findNameByUuid(UUID.randomUUID()));
+        assertNull(service.findUuidByName("UnknownPlayer"));
+        assertNull(service.findNameByUuid(UUID.randomUUID()));
     }
 
     @Test
@@ -92,44 +102,57 @@ class PlayerRepositoryTest {
         UUID uuid2 = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
         UUID uuid3 = UUID.fromString("550e8400-e29b-41d4-a716-446655440002");
 
-        repository.save(uuid1, "Steve");
-        repository.save(uuid2, "Alex");
-        repository.save(uuid3, "Notch");
+        service.save(uuid1, "Steve");
+        service.save(uuid2, "Alex");
+        service.save(uuid3, "Notch");
 
         // Verify all players can be found
-        assertEquals(uuid1, repository.findUuidByName("Steve"));
-        assertEquals(uuid2, repository.findUuidByName("Alex"));
-        assertEquals(uuid3, repository.findUuidByName("Notch"));
+        assertEquals(uuid1, service.findUuidByName("Steve"));
+        assertEquals(uuid2, service.findUuidByName("Alex"));
+        assertEquals(uuid3, service.findUuidByName("Notch"));
 
-        assertEquals("Steve", repository.findNameByUuid(uuid1));
-        assertEquals("Alex", repository.findNameByUuid(uuid2));
-        assertEquals("Notch", repository.findNameByUuid(uuid3));
+        assertEquals("Steve", service.findNameByUuid(uuid1));
+        assertEquals("Alex", service.findNameByUuid(uuid2));
+        assertEquals("Notch", service.findNameByUuid(uuid3));
     }
 
     @Test
     void testNamePreservation() {
         // Save with specific casing
-        repository.save(testUuid, "StEvE");
+        service.save(testUuid, "StEvE");
 
         // Name should be preserved exactly as saved
-        assertEquals("StEvE", repository.findNameByUuid(testUuid));
+        assertEquals("StEvE", service.findNameByUuid(testUuid));
 
         // But lookup should be case-insensitive
-        assertEquals(testUuid, repository.findUuidByName("steve"));
-        assertEquals(testUuid, repository.findUuidByName("STEVE"));
+        assertEquals(testUuid, service.findUuidByName("steve"));
+        assertEquals(testUuid, service.findUuidByName("STEVE"));
+    }
+
+    @Test
+    void testCacheBehavior() {
+        // First save
+        service.save(testUuid, testName);
+
+        // First lookup - should populate cache
+        UUID foundUuid = service.findUuidByName(testName);
+        assertEquals(testUuid, foundUuid);
+
+        // Second lookup - should hit cache (faster)
+        UUID cachedUuid = service.findUuidByName(testName);
+        assertEquals(testUuid, cachedUuid);
+
+        // Verify cache consistency with name change
+        service.save(testUuid, "NewName");
+        assertEquals("NewName", service.findNameByUuid(testUuid));
+        assertNull(service.findUuidByName(testName), "Old name should be cleared from cache");
     }
 
     @Test
     void testClose() {
-        repository.save(testUuid, testName);
+        service.save(testUuid, testName);
 
         // Close should not throw
-        assertDoesNotThrow(() -> repository.close());
-
-        // After close, data should still be accessible in memory implementation
-        // (close() for MemoryPlayerRepository just clears the maps)
-        repository.close();
-        assertNull(repository.findUuidByName(testName));
-        assertNull(repository.findNameByUuid(testUuid));
+        assertDoesNotThrow(() -> service.close());
     }
 }

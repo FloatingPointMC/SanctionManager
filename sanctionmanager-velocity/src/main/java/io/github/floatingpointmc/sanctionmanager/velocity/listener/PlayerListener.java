@@ -37,7 +37,7 @@ public class PlayerListener {
         String name = event.getUsername();
 
         // Save player UUID <-> Name mapping for offline player resolution
-        manager.getPlayerRepository().save(uuid, name);
+        manager.getPlayerService().save(uuid, name);
 
         // Check for active bans
         Collection<Punishment> active = punishManager.queryActivePunishments(uuid);

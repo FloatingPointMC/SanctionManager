@@ -60,12 +60,12 @@ public class BanCommand extends AdminCommand {
             isOnline = true;
         } else {
             // Player is offline - query PlayerRepository
-            targetUuid = manager.getPlayerRepository().findUuidByName(targetName);
+            targetUuid = manager.getPlayerService().findUuidByName(targetName);
             if (targetUuid == null) {
                 sender.sendMessage("Player '" + targetName + "' not found. They may have never joined this server.");
                 return;
             }
-            resolvedName = manager.getPlayerRepository().findNameByUuid(targetUuid);
+            resolvedName = manager.getPlayerService().findNameByUuid(targetUuid);
             if (resolvedName == null) {
                 resolvedName = targetName; // Fallback to input name
             }
@@ -122,7 +122,7 @@ public class BanCommand extends AdminCommand {
         }
 
         // Only kick if player is actually online
-        if (isOnline && targetPlayer != null) {
+        if (isOnline) {
             String kickMessage = TranslationFormatter.format(lines, msgContext);
             targetPlayer.kick(kickMessage);
         }
