@@ -18,8 +18,6 @@ public class PunishmentRecord implements Punishment {
     @Getter
     private @Nullable UUID executor;
     @Getter
-    private @NotNull String operatorName;
-    @Getter
     private @NotNull LocalDateTime executingTime;
     @Getter
     private @Nullable LocalDateTime expiryTime;
@@ -41,12 +39,11 @@ public class PunishmentRecord implements Punishment {
     private @NotNull Type type;
     private boolean processed;
 
-    public PunishmentRecord(int id, int relId, @NotNull UUID target, @Nullable UUID executor, @NotNull String operatorName, @NotNull LocalDateTime executingTime, @Nullable LocalDateTime expiryTime, boolean overridden, @Nullable Punishment overriddenBy, boolean overriding, @Nullable Punishment overriddenPunishment, boolean withdrawn, @Nullable UUID withdrawnBy, @Nullable String reason, @NotNull Type type) {
+    public PunishmentRecord(int id, int relId, @NotNull UUID target, @Nullable UUID executor, @NotNull LocalDateTime executingTime, @Nullable LocalDateTime expiryTime, boolean overridden, @Nullable Punishment overriddenBy, boolean overriding, @Nullable Punishment overriddenPunishment, boolean withdrawn, @Nullable UUID withdrawnBy, @Nullable String reason, @NotNull Type type) {
         this.id = id;
         this.relId = relId;
         this.target = target;
         this.executor = executor;
-        this.operatorName = operatorName;
         this.executingTime = executingTime;
         this.expiryTime = expiryTime;
         this.overridden = overridden;

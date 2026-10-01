@@ -124,7 +124,7 @@ public class VelocityMain {
             new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(true);
 
             proxy.getEventManager().register(this, new PlayerListener(
-                    SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate));
+                    manager, SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate));
 
             logger.info("SanctionManager is running in standalone mode.");
         } else {

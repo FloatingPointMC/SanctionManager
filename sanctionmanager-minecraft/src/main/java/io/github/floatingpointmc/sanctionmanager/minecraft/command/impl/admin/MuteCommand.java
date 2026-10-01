@@ -23,12 +23,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.UUID;
 
-public class BanCommand extends AdminCommand {
+/**
+ * Mute command implementation with offline player support.
+ * <p>
+ * Allows muting players who have previously joined the server,
+ * even if they are currently offline.
+ */
+public class MuteCommand extends AdminCommand {
     private final @NotNull MinecraftSanctionManager manager;
     private final @NotNull TranslationConfig translationConfig;
     private final @NotNull TranslationContext contextTemplate;
 
-    public BanCommand(@NotNull MinecraftSanctionManager manager, @NotNull TranslationConfig translationConfig, @NotNull TranslationContext contextTemplate) {
+    public MuteCommand(@NotNull MinecraftSanctionManager manager, @NotNull TranslationConfig translationConfig, @NotNull TranslationContext contextTemplate) {
         this.manager = manager;
         this.translationConfig = translationConfig;
         this.contextTemplate = contextTemplate;
@@ -51,25 +57,23 @@ public class BanCommand extends AdminCommand {
         SanctionPlayer targetPlayer = provider.getPlayer(targetName);
         UUID targetUuid;
         String resolvedName;
-        boolean isOnline;
 
         if (targetPlayer != null) {
             // Player is online
             targetUuid = targetPlayer.getUniqueId();
             resolvedName = targetPlayer.getName();
-            isOnline = true;
         } else {
             // Player is offline - query PlayerRepository
             targetUuid = manager.getPlayerRepository().findUuidByName(targetName);
             if (targetUuid == null) {
-                sender.sendMessage("Player '" + targetName + "' not found. They may have never joined this server.");
+                String errorMsg = translationConfig.get("error.player-not-found");
+                sender.sendMessage(errorMsg.replace("{0}", targetName));
                 return;
             }
             resolvedName = manager.getPlayerRepository().findNameByUuid(targetUuid);
             if (resolvedName == null) {
                 resolvedName = targetName; // Fallback to input name
             }
-            isOnline = false;
         }
 
         LocalDateTime expiryTime = null;
@@ -95,7 +99,7 @@ public class BanCommand extends AdminCommand {
                 false, null, false, null,
                 false, null,
                 reason,
-                Type.BAN
+                Type.MUTE
         );
 
         PunishmentManagerAPI punishManager = manager.getPunishmentManager();
@@ -116,15 +120,16 @@ public class BanCommand extends AdminCommand {
                 .build();
 
         boolean isTemp = expiryTime != null;
-        java.util.List<String> lines = isTemp ? translationConfig.getStringList("ban.temporary") : translationConfig.getStringList("ban.permanent");
-        for (String line : TranslationFormatter.formatLines(lines, msgContext)) {
-            sender.sendMessage(line);
-        }
+        java.util.List<String> lines = isTemp ? translationConfig.getStringList("mute.temporary") : translationConfig.getStringList("mute.permanent");
 
-        // Only kick if player is actually online
-        if (isOnline && targetPlayer != null) {
-            String kickMessage = TranslationFormatter.format(lines, msgContext);
-            targetPlayer.kick(kickMessage);
+        String confirmMsg = "§aMuted " + resolvedName + (isTemp ? " for " + durationStr : " permanently") + (reason != null ? " (Reason: " + reason + ")" : "");
+        sender.sendMessage(confirmMsg);
+
+        // Notify online player if they're online
+        if (targetPlayer != null) {
+            for (String line : TranslationFormatter.formatLines(lines, msgContext)) {
+                targetPlayer.sendMessage(line);
+            }
         }
     }
 
@@ -172,7 +177,7 @@ public class BanCommand extends AdminCommand {
 
     @Override
     public @NotNull String getName() {
-        return "ban";
+        return "mute";
     }
 
     @Override
@@ -189,6 +194,6 @@ public class BanCommand extends AdminCommand {
 
     @Override
     public @NotNull String getPermission() {
-        return "sanctionmanager.ban";
+        return "sanctionmanager.mute";
     }
 }

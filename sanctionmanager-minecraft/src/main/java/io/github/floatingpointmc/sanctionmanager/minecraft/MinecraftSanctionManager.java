@@ -5,16 +5,20 @@ import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.DatabaseConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.RedisConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.StorageConfig;
+import io.github.floatingpointmc.sanctionmanager.minecraft.player.PlayerRepository;
+import io.github.floatingpointmc.sanctionmanager.minecraft.player.PlayerRepositoryFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class MinecraftSanctionManager {
     private final @NotNull SanctionManagerCore core;
     private final @Nullable MinecraftProvider provider;
+    private final @NotNull PlayerRepository playerRepository;
 
     public MinecraftSanctionManager(@NotNull MinecraftProvider provider, @NotNull StorageConfig storageConfig) {
         this.provider = provider;
         this.core = new SanctionManagerCore(storageConfig);
+        this.playerRepository = initializePlayerRepository(storageConfig);
     }
 
     public MinecraftSanctionManager(@NotNull MinecraftProvider provider, boolean databaseEnabled, @NotNull String driver, @NotNull String host, int port,
@@ -43,11 +47,13 @@ public class MinecraftSanctionManager {
                 .binaryDataDir(binaryDataDir)
                 .build();
         this.core = new SanctionManagerCore(storageConfig);
+        this.playerRepository = initializePlayerRepository(storageConfig);
     }
 
     public MinecraftSanctionManager(@NotNull StorageConfig storageConfig) {
         this.provider = null;
         this.core = new SanctionManagerCore(storageConfig);
+        this.playerRepository = initializePlayerRepository(storageConfig);
     }
 
     public MinecraftSanctionManager(boolean databaseEnabled, @NotNull String driver, @NotNull String host, int port,
@@ -76,6 +82,7 @@ public class MinecraftSanctionManager {
                 .binaryDataDir(binaryDataDir)
                 .build();
         this.core = new SanctionManagerCore(storageConfig);
+        this.playerRepository = initializePlayerRepository(storageConfig);
     }
 
     public @NotNull PunishmentManagerAPI getPunishmentManager() {
@@ -90,7 +97,45 @@ public class MinecraftSanctionManager {
         return provider;
     }
 
+    public @NotNull PlayerRepository getPlayerRepository() {
+        return playerRepository;
+    }
+
     public void shutdown() {
+        playerRepository.close();
         core.shutdown();
+    }
+
+    /**
+     * Initialize Minecraft's own PlayerRepository.
+     * <p>
+     * This is SEPARATE from Core's punishment storage.
+     * Minecraft owns player data (UUID <-> Name mapping).
+     * Core owns sanction data (Punishment, Ban, Mute).
+     * <p>
+     * The PlayerRepository uses the same storage configuration as Core
+     * but maintains its own data structures (separate tables/files/keys).
+     */
+    private @NotNull PlayerRepository initializePlayerRepository(@NotNull StorageConfig storageConfig) {
+        // Access Core's infrastructure for Minecraft's own data
+        com.zaxxer.hikari.HikariDataSource dataSource = null;
+        redis.clients.jedis.JedisPool jedisPool = null;
+
+        // Get DataSource if database is enabled
+        if (core.isDatabaseEnabled() && core.getRepository() instanceof io.github.floatingpointmc.sanctionmanager.core.repository.HikariPunishmentRepository) {
+            io.github.floatingpointmc.sanctionmanager.core.repository.HikariPunishmentRepository hikariRepo =
+                    (io.github.floatingpointmc.sanctionmanager.core.repository.HikariPunishmentRepository) core.getRepository();
+            dataSource = hikariRepo.getDataSource();
+        }
+
+        // Get JedisPool if redis is enabled
+        if (core.isRedisEnabled()) {
+            // Redis client is private in Core, so we'll need to create our own JedisPool
+            // for now, pass null and let factory fall back to other storage
+            // TODO: Consider exposing JedisPool from Core or creating separate pool for Minecraft
+            jedisPool = null;
+        }
+
+        return PlayerRepositoryFactory.create(storageConfig, dataSource, jedisPool);
     }
 }

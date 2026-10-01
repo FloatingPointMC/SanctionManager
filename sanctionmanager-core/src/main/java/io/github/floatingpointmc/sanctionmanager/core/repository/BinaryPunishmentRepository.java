@@ -84,7 +84,7 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
                 if (detail != null) {
                     PunishmentRecord record = new PunishmentRecord(
                             id, relId, detail.getTarget(), detail.getExecutor(),
-                            detail.getOperatorName(), detail.getExecutingTime(), detail.getExpiryTime(),
+                            detail.getExecutingTime(), detail.getExpiryTime(),
                             detail.isOverridden(), detail.getOverriddenBy(), detail.isOverriding(),
                             detail.getOverriddenPunishment(), detail.isWithdrawn(), detail.getWithdrawnBy(),
                             detail.getReason(), type
@@ -103,7 +103,6 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
         int id = dis.readInt();
         UUID target = readUuid(dis);
         UUID executor = readNullableUuid(dis);
-        String operatorName = dis.readUTF();
         LocalDateTime executingTime = readLocalDateTime(dis);
         LocalDateTime expiryTime = readNullableLocalDateTime(dis);
         boolean overridden = dis.readBoolean();
@@ -114,7 +113,7 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
         UUID withdrawnBy = readNullableUuid(dis);
         String reason = readNullableString(dis);
         PunishmentRecord record = new PunishmentRecord(
-                0, id, target, executor, operatorName, executingTime, expiryTime,
+                0, id, target, executor, executingTime, expiryTime,
                 overridden, null, overriding, null, withdrawn, withdrawnBy, reason, type
         );
         record.setProcessed(true);
@@ -163,7 +162,6 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
         dos.writeInt(p.getRelId());
         writeUuid(dos, p.getTarget());
         writeNullableUuid(dos, p.getExecutor());
-        dos.writeUTF(p.getOperatorName());
         writeLocalDateTime(dos, p.getExecutingTime());
         writeNullableLocalDateTime(dos, p.getExpiryTime());
         dos.writeBoolean(p.isOverridden());
@@ -273,7 +271,7 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
 
             PunishmentRecord saved = new PunishmentRecord(
                     punishmentId, relId, record.getTarget(), record.getExecutor(),
-                    record.getOperatorName(), record.getExecutingTime(), record.getExpiryTime(),
+                    record.getExecutingTime(), record.getExpiryTime(),
                     record.isOverridden(), record.getOverriddenBy(), record.isOverriding(),
                     record.getOverriddenPunishment(), record.isWithdrawn(), record.getWithdrawnBy(),
                     record.getReason(), record.getType()

@@ -28,7 +28,6 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "id INT AUTO_INCREMENT PRIMARY KEY, " +
                     "target_uuid VARCHAR(36) NOT NULL, " +
                     "executor_uuid VARCHAR(36), " +
-                    "operator_name VARCHAR(64) NOT NULL DEFAULT '[Console]', " +
                     "executing_time TIMESTAMP NOT NULL, " +
                     "expiry_time TIMESTAMP, " +
                     "overridden BOOLEAN NOT NULL DEFAULT FALSE, " +
@@ -44,7 +43,6 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "id INT AUTO_INCREMENT PRIMARY KEY, " +
                     "target_uuid VARCHAR(36) NOT NULL, " +
                     "executor_uuid VARCHAR(36), " +
-                    "operator_name VARCHAR(64) NOT NULL DEFAULT '[Console]', " +
                     "executing_time TIMESTAMP NOT NULL, " +
                     "expiry_time TIMESTAMP, " +
                     "overridden BOOLEAN NOT NULL DEFAULT FALSE, " +
@@ -65,7 +63,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "WHERE b.target_uuid = ? OR m.target_uuid = ?;";
 
     private static final String SELECT_ACTIVE_BANS_BY_TARGET =
-            "SELECT p.id, p.rel_id, p.type, b.target_uuid, b.executor_uuid, b.operator_name, " +
+            "SELECT p.id, p.rel_id, p.type, b.target_uuid, b.executor_uuid, " +
                     "b.executing_time, b.expiry_time, b.overridden, b.overridden_by_id, " +
                     "b.overriding, b.overridden_id, b.withdrawn, b.withdrawn_by_uuid, b.reason " +
                     "FROM punishment p " +
@@ -75,7 +73,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "AND (b.expiry_time IS NULL OR b.expiry_time > CURRENT_TIMESTAMP);";
 
     private static final String SELECT_ACTIVE_MUTES_BY_TARGET =
-            "SELECT p.id, p.rel_id, p.type, m.target_uuid, m.executor_uuid, m.operator_name, " +
+            "SELECT p.id, p.rel_id, p.type, m.target_uuid, m.executor_uuid, " +
                     "m.executing_time, m.expiry_time, m.overridden, m.overridden_by_id, " +
                     "m.overriding, m.overridden_id, m.withdrawn, m.withdrawn_by_uuid, m.reason " +
                     "FROM punishment p " +
@@ -85,25 +83,25 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "AND (m.expiry_time IS NULL OR m.expiry_time > CURRENT_TIMESTAMP);";
 
     private static final String INSERT_BAN =
-            "INSERT INTO ban (target_uuid, executor_uuid, operator_name, executing_time, expiry_time, " +
+            "INSERT INTO ban (target_uuid, executor_uuid, executing_time, expiry_time, " +
                     "overridden, overridden_by_id, overriding, overridden_id, withdrawn, withdrawn_by_uuid, reason) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     private static final String INSERT_MUTE =
-            "INSERT INTO mute (target_uuid, executor_uuid, operator_name, executing_time, expiry_time, " +
+            "INSERT INTO mute (target_uuid, executor_uuid, executing_time, expiry_time, " +
                     "overridden, overridden_by_id, overriding, overridden_id, withdrawn, withdrawn_by_uuid, reason) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     private static final String INSERT_PUNISHMENT =
             "INSERT INTO punishment (rel_id, type) VALUES (?, ?);";
 
     private static final String UPDATE_BAN =
-            "UPDATE ban SET target_uuid = ?, executor_uuid = ?, operator_name = ?, executing_time = ?, expiry_time = ?, " +
+            "UPDATE ban SET target_uuid = ?, executor_uuid = ?, executing_time = ?, expiry_time = ?, " +
                     "overridden = ?, overridden_by_id = ?, overriding = ?, overridden_id = ?, " +
                     "withdrawn = ?, withdrawn_by_uuid = ?, reason = ? WHERE id = ?;";
 
     private static final String UPDATE_MUTE =
-            "UPDATE mute SET target_uuid = ?, executor_uuid = ?, operator_name = ?, executing_time = ?, expiry_time = ?, " +
+            "UPDATE mute SET target_uuid = ?, executor_uuid = ?, executing_time = ?, expiry_time = ?, " +
                     "overridden = ?, overridden_by_id = ?, overriding = ?, overridden_id = ?, " +
                     "withdrawn = ?, withdrawn_by_uuid = ?, reason = ? WHERE id = ?;";
 
@@ -337,7 +335,6 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                 relId,
                 UUID.fromString(rs.getString("target_uuid")),
                 executorUuidStr != null ? UUID.fromString(executorUuidStr) : null,
-                rs.getString("operator_name"),
                 rs.getTimestamp("executing_time").toLocalDateTime(),
                 expiryTimestamp != null ? expiryTimestamp.toLocalDateTime() : null,
                 rs.getBoolean("overridden"),
@@ -354,15 +351,24 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
     private void setDetailParams(@NotNull PreparedStatement ps, @NotNull Punishment p) throws SQLException {
         ps.setString(1, p.getTarget().toString());
         ps.setString(2, p.getExecutor() != null ? p.getExecutor().toString() : null);
-        ps.setString(3, p.getOperatorName());
-        ps.setTimestamp(4, Timestamp.valueOf(p.getExecutingTime()));
-        ps.setTimestamp(5, p.getExpiryTime() != null ? Timestamp.valueOf(p.getExpiryTime()) : null);
-        ps.setBoolean(6, p.isOverridden());
-        ps.setObject(7, p.getOverriddenBy() != null ? p.getOverriddenBy().getId() : null, Types.INTEGER);
-        ps.setBoolean(8, p.isOverriding());
-        ps.setObject(9, p.getOverriddenPunishment() != null ? p.getOverriddenPunishment().getId() : null, Types.INTEGER);
-        ps.setBoolean(10, p.isWithdrawn());
-        ps.setString(11, p.getWithdrawnBy() != null ? p.getWithdrawnBy().toString() : null);
-        ps.setString(12, p.getReason());
+        ps.setTimestamp(3, Timestamp.valueOf(p.getExecutingTime()));
+        ps.setTimestamp(4, p.getExpiryTime() != null ? Timestamp.valueOf(p.getExpiryTime()) : null);
+        ps.setBoolean(5, p.isOverridden());
+        ps.setObject(6, p.getOverriddenBy() != null ? p.getOverriddenBy().getId() : null, Types.INTEGER);
+        ps.setBoolean(7, p.isOverriding());
+        ps.setObject(8, p.getOverriddenPunishment() != null ? p.getOverriddenPunishment().getId() : null, Types.INTEGER);
+        ps.setBoolean(9, p.isWithdrawn());
+        ps.setString(10, p.getWithdrawnBy() != null ? p.getWithdrawnBy().toString() : null);
+        ps.setString(11, p.getReason());
+    }
+
+    /**
+     * Get the underlying HikariDataSource.
+     * <p>
+     * Used by Minecraft layer to create its own PlayerRepository using the same database connection pool.
+     * Minecraft maintains separate tables (sm_minecraft_players) from Core's punishment tables.
+     */
+    public @NotNull HikariDataSource getDataSource() {
+        return dataSource;
     }
 }

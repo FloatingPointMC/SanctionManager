@@ -20,6 +20,8 @@ dependencies {
     api(project(":sanctionmanager-api"))
     implementation(project(":sanctionmanager-core"))
     implementation("org.incendo:cloud-core:2.0.0")
+    implementation("com.zaxxer:HikariCP:4.0.3")
+    implementation("redis.clients:jedis:4.3.1")
     compileOnly("org.jetbrains:annotations:26.1.0")
     annotationProcessor("org.jetbrains:annotations:26.1.0")
     compileOnly("org.projectlombok:lombok:1.18.48")

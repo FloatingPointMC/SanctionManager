@@ -111,7 +111,7 @@ public class BungeeMain extends Plugin {
             getLogger().info("SanctionManager is running in proxy mode, no commands available.");
         }
         getProxy().getPluginManager().registerListener(this,
-                new PlayerListener(SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate));
+                new PlayerListener(manager, SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate));
     }
 
     @Override

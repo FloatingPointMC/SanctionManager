@@ -3,6 +3,9 @@ package io.github.floatingpointmc.sanctionmanager.minecraft.command;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionCommandArgument;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin.BanCommand;
+import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin.MuteCommand;
+import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin.UnbanCommand;
+import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin.UnmuteCommand;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationContext;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationFormatter;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
@@ -33,6 +36,9 @@ public class SanctionCommandManager {
 
     private void buildServiceCommands() {
         buildCommand(new BanCommand(sanctionManager, translationConfig, translationContext));
+        buildCommand(new UnbanCommand(sanctionManager, translationConfig));
+        buildCommand(new MuteCommand(sanctionManager, translationConfig, translationContext));
+        buildCommand(new UnmuteCommand(sanctionManager, translationConfig));
     }
 
     private void buildCommand(SanctionCommand command) {

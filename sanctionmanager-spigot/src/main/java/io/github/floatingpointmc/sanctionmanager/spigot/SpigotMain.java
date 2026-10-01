@@ -79,7 +79,7 @@ public class SpigotMain extends JavaPlugin {
                                 SpigotCommandSender::new,
                                 mapped -> ((SpigotCommandSender) mapped).commandSender
                         ));
-        new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands("standalone".equals(mode));
+
         if ("standalone".equals(mode)) {
             String binaryDir = getDataFolder().toPath()
                     .resolve(getConfig().getString("storage.binary.directory", "data"))
@@ -100,10 +100,13 @@ public class SpigotMain extends JavaPlugin {
                     getConfig().getString("storage.redis.password", ""),
                     binaryDir);
 
+            new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(true);
+
             getServer().getPluginManager().registerEvents(
-                    new PlayerListener(SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate), this);
+                    new PlayerListener(manager, SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate), this);
             getLogger().info("SanctionManager is running in standalone mode.");
         } else {
+            new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(false);
             getLogger().warning("SanctionManager is running under bridge mode, no features available.");
             SanctionManagerAPI.register(new SanctionManagerBridge());
         }

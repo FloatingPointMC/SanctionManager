@@ -15,7 +15,6 @@ import java.util.UUID;
 public class PunishmentBuilder implements Punishment.Builder {
     private final @NotNull UUID target;
     private @Nullable UUID executor;
-    private final @NotNull String operatorName;
     private @NotNull LocalDateTime executingTime = LocalDateTime.now();
     private @Nullable LocalDateTime expiryTime;
     private @Nullable String reason;
@@ -47,6 +46,6 @@ public class PunishmentBuilder implements Punishment.Builder {
 
     @Override
     public Punishment build() {
-        return new PunishmentRecord(0, 0, this.target, this.executor, this.operatorName, this.executingTime, this.expiryTime, false, null, false, null, false, null, this.reason, this.type);
+        return new PunishmentRecord(0, 0, this.target, this.executor, this.executingTime, this.expiryTime, false, null, false, null, false, null, this.reason, this.type);
     }
 }

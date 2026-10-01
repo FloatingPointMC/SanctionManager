@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public class PunishmentFactoryCore implements PunishmentFactory {
     @Override
-    public Punishment.Builder create(@NotNull UUID target, @NotNull String operatorName, @NotNull Type type) {
-        return new PunishmentBuilder(target, operatorName, type);
+    public Punishment.Builder create(@NotNull UUID target, @NotNull Type type) {
+        return new PunishmentBuilder(target, type);
     }
 }

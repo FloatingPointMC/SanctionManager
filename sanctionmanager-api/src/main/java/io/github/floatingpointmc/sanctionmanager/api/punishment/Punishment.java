@@ -15,8 +15,6 @@ public interface Punishment {
 
     @Nullable UUID getExecutor();
 
-    @NotNull String getOperatorName();
-
     @NotNull LocalDateTime getExecutingTime();
 
     @Nullable LocalDateTime getExpiryTime();

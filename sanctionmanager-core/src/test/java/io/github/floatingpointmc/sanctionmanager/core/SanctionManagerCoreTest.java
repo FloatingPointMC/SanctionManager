@@ -51,7 +51,7 @@ public class SanctionManagerCoreTest {
         StandaloneEventAPI.getApi().register(listener);
 
         PunishmentRecord punishment = new PunishmentRecord(
-                1, 1, UUID.randomUUID(), UUID.randomUUID(), "Console",
+                1, 1, UUID.randomUUID(), UUID.randomUUID(),
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Test reason", Type.BAN
         );
@@ -68,7 +68,7 @@ public class SanctionManagerCoreTest {
         StandaloneEventAPI.getApi().register(listener);
 
         PunishmentRecord punishment = new PunishmentRecord(
-                2, 2, UUID.randomUUID(), UUID.randomUUID(), "Console",
+                2, 2, UUID.randomUUID(), UUID.randomUUID(),
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Cancelled test", Type.MUTE
         );
@@ -83,7 +83,7 @@ public class SanctionManagerCoreTest {
     void testLocalPunishmentCachePutAndFind() {
         UUID target = UUID.randomUUID();
         PunishmentRecord punishment = new PunishmentRecord(
-                10, 5, target, null, "Console",
+                10, 5, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Cache test", Type.BAN
         );
@@ -105,7 +105,7 @@ public class SanctionManagerCoreTest {
     void testLocalPunishmentCacheInvalidate() {
         UUID target = UUID.randomUUID();
         PunishmentRecord punishment = new PunishmentRecord(
-                20, 10, target, null, "Console",
+                20, 10, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Invalidate test", Type.BAN
         );
@@ -147,13 +147,13 @@ public class SanctionManagerCoreTest {
         UUID muteTarget = UUID.randomUUID();
 
         PunishmentRecord ban = new PunishmentRecord(
-                1, 1, banTarget, null, "Console",
+                1, 1, banTarget, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban reason", Type.BAN
         );
 
         PunishmentRecord mute = new PunishmentRecord(
-                2, 1, muteTarget, null, "Console",
+                2, 1, muteTarget, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Mute reason", Type.MUTE
         );
@@ -181,7 +181,7 @@ public class SanctionManagerCoreTest {
     @Test
     void testPunishmentRecordRelIdField() {
         PunishmentRecord record = new PunishmentRecord(
-                100, 42, UUID.randomUUID(), UUID.randomUUID(), "Admin",
+                100, 42, UUID.randomUUID(), UUID.randomUUID(),
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Test", Type.BAN
         );
@@ -258,14 +258,14 @@ public class SanctionManagerCoreTest {
         UUID muteTarget = UUID.randomUUID();
 
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, banTarget, null, "Console",
+                0, 0, banTarget, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban reason", Type.BAN
         );
         repo.save(ban);
 
         PunishmentRecord mute = new PunishmentRecord(
-                0, 0, muteTarget, null, "Console",
+                0, 0, muteTarget, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Mute reason", Type.MUTE
         );
@@ -305,14 +305,14 @@ public class SanctionManagerCoreTest {
         BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
 
         PunishmentRecord ban1 = new PunishmentRecord(
-                0, 0, UUID.randomUUID(), null, "Console",
+                0, 0, UUID.randomUUID(), null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban 1", Type.BAN
         );
         repo.save(ban1);
 
         PunishmentRecord mute1 = new PunishmentRecord(
-                0, 0, UUID.randomUUID(), null, "Console",
+                0, 0, UUID.randomUUID(), null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Mute 1", Type.MUTE
         );
@@ -334,14 +334,14 @@ public class SanctionManagerCoreTest {
         UUID target = UUID.randomUUID();
 
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban reason", Type.BAN
         );
         repo.save(ban);
 
         PunishmentRecord mute = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Mute reason", Type.MUTE
         );
@@ -366,14 +366,14 @@ public class SanctionManagerCoreTest {
         UUID target = UUID.randomUUID();
 
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban reason", Type.BAN
         );
         repo.save(ban);
 
         PunishmentRecord mute = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Mute reason", Type.MUTE
         );
@@ -396,7 +396,7 @@ public class SanctionManagerCoreTest {
         BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
 
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, UUID.randomUUID(), null, "Console",
+                0, 0, UUID.randomUUID(), null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban reason", Type.BAN
         );
@@ -419,7 +419,7 @@ public class SanctionManagerCoreTest {
 
         BinaryPunishmentRepository repo1 = new BinaryPunishmentRepository(dataDir);
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Persistent ban", Type.BAN
         );
@@ -444,7 +444,7 @@ public class SanctionManagerCoreTest {
         BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
 
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, UUID.randomUUID(), null, "Console",
+                0, 0, UUID.randomUUID(), null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Test", Type.BAN
         );
@@ -454,7 +454,7 @@ public class SanctionManagerCoreTest {
         assertEquals(1, ban.getRelId());
 
         PunishmentRecord mute = new PunishmentRecord(
-                0, 0, UUID.randomUUID(), null, "Console",
+                0, 0, UUID.randomUUID(), null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Test 2", Type.MUTE
         );
@@ -474,7 +474,7 @@ public class SanctionManagerCoreTest {
         BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
 
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, UUID.randomUUID(), null, "Console",
+                0, 0, UUID.randomUUID(), null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Atomic test", Type.BAN
         );
@@ -504,7 +504,7 @@ public class SanctionManagerCoreTest {
 
         UUID target = UUID.randomUUID();
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Original", Type.BAN
         );
@@ -529,7 +529,7 @@ public class SanctionManagerCoreTest {
 
         UUID target = UUID.randomUUID();
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Service test", Type.BAN
         );
@@ -551,7 +551,7 @@ public class SanctionManagerCoreTest {
         Path dataDir = tempDir.resolve("sm-data-placeholder");
         BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
 
-        Punishment ban = new PunishmentFactoryCore().create(UUID.randomUUID(), "Console", Type.BAN)
+        Punishment ban = new PunishmentFactoryCore().create(UUID.randomUUID(), Type.BAN)
                 .reason("Placeholder test")
                 .executingTime(LocalDateTime.now())
                 .build();
@@ -586,7 +586,7 @@ public class SanctionManagerCoreTest {
 
         UUID target = UUID.randomUUID();
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Cache test", Type.BAN
         );
@@ -632,7 +632,7 @@ public class SanctionManagerCoreTest {
 
         UUID target = UUID.randomUUID();
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban", Type.BAN
         );
@@ -660,7 +660,7 @@ public class SanctionManagerCoreTest {
         assertNull(first);
 
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "New ban", Type.BAN
         );
@@ -681,7 +681,7 @@ public class SanctionManagerCoreTest {
 
         UUID target = UUID.randomUUID();
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban", Type.BAN
         );
@@ -707,7 +707,7 @@ public class SanctionManagerCoreTest {
 
         UUID target = UUID.randomUUID();
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), null, false, null, false, null,
                 false, null, "Ban", Type.BAN
         );
@@ -733,7 +733,7 @@ public class SanctionManagerCoreTest {
 
         UUID target = UUID.randomUUID();
         PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null, "Console",
+                0, 0, target, null,
                 LocalDateTime.now(), LocalDateTime.now().minusHours(1), false, null, false, null,
                 false, null, "Expired", Type.BAN
         );

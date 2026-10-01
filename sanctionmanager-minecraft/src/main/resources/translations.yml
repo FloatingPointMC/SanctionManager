@@ -15,6 +15,9 @@ description:
   - "\u00A73Type '/sm help' to view available commands."
   - "\u00A7b\u00A7l---------------------------------------------"
 
+error:
+  player-not-found: "\u00A7cPlayer not found. They may have never joined the server."
+
 command:
   ban:
     usage: /ban <Player> [Duration] [Reason]
@@ -23,6 +26,23 @@ command:
       player: The player to ban.
       duration: The duration of the ban, default permanent.
       reason: The reason for the ban.
+  unban:
+    usage: /unban <Player>
+    desc: Unban a specific player.
+    arg:
+      player: The player to unban.
+  mute:
+    usage: /mute <Player> [Duration] [Reason]
+    desc: Mute a specific player.
+    arg:
+      player: The player to mute.
+      duration: The duration of the mute, default permanent.
+      reason: The reason for the mute.
+  unmute:
+    usage: /unmute <Player>
+    desc: Unmute a specific player.
+    arg:
+      player: The player to unmute.
 
 ban:
   permanent:
