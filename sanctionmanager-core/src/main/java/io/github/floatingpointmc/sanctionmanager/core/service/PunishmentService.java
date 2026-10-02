@@ -92,6 +92,14 @@ public class PunishmentService {
         return activeMute;
     }
 
+    public @NotNull Collection<Punishment> queryActiveWarns(@NotNull UUID target) {
+        Collection<Punishment> fromDb = repository.findActiveWarnsByTarget(target);
+        for (Punishment p : fromDb) {
+            cache.put(p);
+        }
+        return fromDb;
+    }
+
     public @Nullable Punishment queryActiveWarn(@NotNull UUID target) {
         // Check cache first
         Optional<Punishment> cached = cache.findActiveByTargetAndType(target, Type.WARN);

@@ -1,8 +1,5 @@
 package io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin;
 
-import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.punishment.Type;
-import io.github.floatingpointmc.sanctionmanager.core.model.PunishmentRecord;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.AdminCommand;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
@@ -12,6 +9,9 @@ import io.github.floatingpointmc.sanctionmanager.minecraft.command.SanctionComma
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationContext;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationFormatter;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
+import io.github.floatingpointmc.sanctionmanager.minecraft.operation.MuteOperation;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.OperationResult;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.SanctionService;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.parser.standard.DurationParser;
 import org.incendo.cloud.parser.standard.StringParser;
@@ -54,29 +54,27 @@ public class MuteCommand extends AdminCommand {
             return;
         }
 
-        // Try to resolve UUID from online player first, then from PlayerRepository
+        // Resolve player UUID and name
         SanctionPlayer targetPlayer = provider.getPlayer(targetName);
         UUID targetUuid;
         String resolvedName;
 
         if (targetPlayer != null) {
-            // Player is online
             targetUuid = targetPlayer.getUniqueId();
             resolvedName = targetPlayer.getName();
         } else {
-            // Player is offline - query PlayerRepository
             targetUuid = manager.getPlayerService().findUuidByName(targetName);
             if (targetUuid == null) {
-                String errorMsg = translationConfig.get("error.player-not-found");
-                sender.sendMessage(errorMsg.replace("{0}", targetName));
+                sender.sendMessage("Player '" + targetName + "' not found. They may have never joined this server.");
                 return;
             }
             resolvedName = manager.getPlayerService().findNameByUuid(targetUuid);
             if (resolvedName == null) {
-                resolvedName = targetName; // Fallback to input name
+                resolvedName = targetName;
             }
         }
 
+        // Parse duration
         LocalDateTime expiryTime = null;
         if (durationStr != null) {
             try {
@@ -88,49 +86,63 @@ public class MuteCommand extends AdminCommand {
             }
         }
 
+        // Get executor info
         UUID executorUuid = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null;
-        String operatorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
+        String executorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
 
-        PunishmentRecord punishment = new PunishmentRecord(
-                0, 0,
+        // Create operation object
+        MuteOperation operation = new MuteOperation(
                 targetUuid,
+                resolvedName,
                 executorUuid,
-                LocalDateTime.now(),
+                executorName,
                 expiryTime,
-                false, null, false, null,
-                false, null,
-                reason,
-                Type.MUTE
+                reason
         );
 
-        PunishmentManagerAPI punishManager = manager.getPunishmentManager();
-        punishManager.addPunishment(punishment);
+        // Execute via service
+        SanctionService service = manager.getSanctionService();
+        if (service == null) {
+            sender.sendMessage("§cSanctionService is not initialized.");
+            return;
+        }
 
-        TranslationContext.Punishment msgContext = TranslationContext.Punishment.builder()
-                .id(punishment.getId())
-                .relId(punishment.getRelId())
-                .target(targetUuid)
-                .targetName(resolvedName)
-                .executor(executorUuid != null ? executorUuid : new UUID(0, 0))
-                .operatorName(operatorName)
-                .executingTime(punishment.getExecutingTime())
-                .expiryTime(expiryTime)
-                .reason(reason)
-                .pluginName(contextTemplate.getPluginName())
-                .pluginVersion(contextTemplate.getPluginVersion())
-                .build();
+        OperationResult result = service.executeMute(operation);
 
-        boolean isTemp = expiryTime != null;
-        java.util.List<String> lines = isTemp ? translationConfig.getStringList("mute.temporary") : translationConfig.getStringList("mute.permanent");
+        // Handle result
+        switch (result) {
+            case SUCCESS:
+                TranslationContext.Punishment msgContext = TranslationContext.Punishment.builder()
+                        .id(0)
+                        .relId(0)
+                        .target(targetUuid)
+                        .targetName(resolvedName)
+                        .executor(executorUuid != null ? executorUuid : new UUID(0, 0))
+                        .operatorName(executorName)
+                        .executingTime(LocalDateTime.now())
+                        .expiryTime(expiryTime)
+                        .reason(reason)
+                        .pluginName(contextTemplate.getPluginName())
+                        .pluginVersion(contextTemplate.getPluginVersion())
+                        .build();
 
-        String confirmMsg = "§aMuted " + resolvedName + (isTemp ? " for " + durationStr : " permanently") + (reason != null ? " (Reason: " + reason + ")" : "");
-        sender.sendMessage(confirmMsg);
+                boolean isTemp = expiryTime != null;
+                java.util.List<String> lines = isTemp
+                        ? translationConfig.getStringList("mute.temporary")
+                        : translationConfig.getStringList("mute.permanent");
 
-        // Notify online player if they're online
-        if (targetPlayer != null) {
-            for (String line : TranslationFormatter.formatLines(lines, msgContext)) {
-                targetPlayer.sendMessage(line);
-            }
+                for (String line : TranslationFormatter.formatLines(lines, msgContext)) {
+                    sender.sendMessage(line);
+                }
+                break;
+
+            case ERROR:
+                sender.sendMessage("§cFailed to mute player.");
+                break;
+
+            default:
+                sender.sendMessage("§cUnexpected result: " + result);
+                break;
         }
     }
 

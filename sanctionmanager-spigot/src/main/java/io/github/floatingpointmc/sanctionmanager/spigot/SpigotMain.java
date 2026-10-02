@@ -100,12 +100,18 @@ public class SpigotMain extends JavaPlugin {
                     getConfig().getString("storage.redis.password", ""),
                     binaryDir);
 
+            // Initialize SanctionService for standalone mode
+            manager.initializeSanctionService(true, translationConfig, contextTemplate);
+
             new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(true);
 
             getServer().getPluginManager().registerEvents(
                     new PlayerListener(manager, SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate), this);
             getLogger().info("SanctionManager is running in standalone mode.");
         } else {
+            // Initialize SanctionService for bridge mode
+            manager.initializeSanctionService(false, translationConfig, contextTemplate);
+
             new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(false);
             getLogger().warning("SanctionManager is running under bridge mode, no features available.");
             SanctionManagerAPI.register(new SanctionManagerBridge());

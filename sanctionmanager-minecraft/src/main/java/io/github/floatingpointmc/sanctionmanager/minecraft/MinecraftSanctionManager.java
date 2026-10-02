@@ -7,6 +7,11 @@ import io.github.floatingpointmc.sanctionmanager.core.config.RedisConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.StorageConfig;
 import io.github.floatingpointmc.sanctionmanager.minecraft.player.PlayerService;
 import io.github.floatingpointmc.sanctionmanager.minecraft.player.PlayerServiceFactory;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.SanctionService;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.StandaloneSanctionService;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.BridgeSanctionService;
+import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
+import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,6 +19,7 @@ public class MinecraftSanctionManager {
     private final @NotNull SanctionManagerCore core;
     private final @Nullable MinecraftProvider provider;
     private final @NotNull PlayerService playerService;
+    private @Nullable SanctionService sanctionService;
 
     public MinecraftSanctionManager(@NotNull MinecraftProvider provider, @NotNull StorageConfig storageConfig) {
         this.provider = provider;
@@ -99,6 +105,34 @@ public class MinecraftSanctionManager {
 
     public @NotNull PlayerService getPlayerService() {
         return playerService;
+    }
+
+    public @Nullable SanctionService getSanctionService() {
+        return sanctionService;
+    }
+
+    /**
+     * Initialize the SanctionService based on the execution mode.
+     *
+     * @param isStandalone true for standalone mode, false for bridge mode
+     * @param translationConfig translation configuration
+     * @param contextTemplate translation context template
+     */
+    public void initializeSanctionService(
+            boolean isStandalone,
+            @NotNull TranslationConfig translationConfig,
+            @NotNull TranslationContext contextTemplate
+    ) {
+        if (isStandalone) {
+            this.sanctionService = new StandaloneSanctionService(
+                    core.getPunishManager(),
+                    provider,
+                    translationConfig,
+                    contextTemplate
+            );
+        } else {
+            this.sanctionService = new BridgeSanctionService();
+        }
     }
 
     public void shutdown() {

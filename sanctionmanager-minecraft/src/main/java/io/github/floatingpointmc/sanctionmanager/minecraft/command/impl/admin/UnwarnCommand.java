@@ -6,9 +6,8 @@ import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
 import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionCommandArgument;
 import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionPlayer;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.SanctionCommandSender;
-import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationContext;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
-import io.github.floatingpointmc.sanctionmanager.minecraft.operation.WarnOperation;
+import io.github.floatingpointmc.sanctionmanager.minecraft.operation.UnwarnOperation;
 import io.github.floatingpointmc.sanctionmanager.minecraft.service.OperationResult;
 import io.github.floatingpointmc.sanctionmanager.minecraft.service.SanctionService;
 import org.incendo.cloud.context.CommandContext;
@@ -17,26 +16,28 @@ import org.incendo.cloud.suggestion.SuggestionProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Collection;
 import java.util.UUID;
 
-public class WarnCommand extends AdminCommand {
+/**
+ * Unwarn command implementation with offline player support.
+ * <p>
+ * Removes the most recent active warning from a player.
+ */
+public class UnwarnCommand extends AdminCommand {
     private final @NotNull MinecraftSanctionManager manager;
     private final @NotNull TranslationConfig translationConfig;
-    private final @NotNull TranslationContext contextTemplate;
 
-    public WarnCommand(@NotNull MinecraftSanctionManager manager, @NotNull TranslationConfig translationConfig, @NotNull TranslationContext contextTemplate) {
+    public UnwarnCommand(@NotNull MinecraftSanctionManager manager, @NotNull TranslationConfig translationConfig) {
         this.manager = manager;
         this.translationConfig = translationConfig;
-        this.contextTemplate = contextTemplate;
     }
 
     @Override
     public void execute(@NotNull CommandContext<SanctionCommandSender> context) {
         SanctionCommandSender sender = context.sender();
         String targetName = context.get("player");
-        String reason = context.<String>optional("reason").orElse(null);
 
         MinecraftProvider provider = manager.getProvider();
         if (provider == null) {
@@ -55,7 +56,8 @@ public class WarnCommand extends AdminCommand {
         } else {
             targetUuid = manager.getPlayerService().findUuidByName(targetName);
             if (targetUuid == null) {
-                sender.sendMessage("Player '" + targetName + "' not found. They may have never joined this server.");
+                String errorMsg = translationConfig.get("error.player-not-found");
+                sender.sendMessage(errorMsg.replace("{0}", targetName));
                 return;
             }
             resolvedName = manager.getPlayerService().findNameByUuid(targetUuid);
@@ -69,12 +71,11 @@ public class WarnCommand extends AdminCommand {
         String executorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
 
         // Create operation object
-        WarnOperation operation = new WarnOperation(
+        UnwarnOperation operation = new UnwarnOperation(
                 targetUuid,
                 resolvedName,
                 executorUuid,
-                executorName,
-                reason
+                executorName
         );
 
         // Execute via service
@@ -84,17 +85,20 @@ public class WarnCommand extends AdminCommand {
             return;
         }
 
-        OperationResult result = service.executeWarn(operation);
+        OperationResult result = service.executeUnwarn(operation);
 
         // Handle result
         switch (result) {
             case SUCCESS:
-                String displayReason = reason != null ? reason : "No reason provided";
-                sender.sendMessage("§6Warned §f" + resolvedName + " §6for: §f" + displayReason);
+                sender.sendMessage("§aRemoved warning from " + resolvedName);
+                break;
+
+            case NO_ACTIVE_PUNISHMENT:
+                sender.sendMessage("§cNo active warnings found for " + resolvedName);
                 break;
 
             case ERROR:
-                sender.sendMessage("§cFailed to warn player.");
+                sender.sendMessage("§cFailed to remove warning.");
                 break;
 
             default:
@@ -105,22 +109,21 @@ public class WarnCommand extends AdminCommand {
 
     @Override
     public @NotNull String getName() {
-        return "warn";
+        return "unwarn";
     }
 
     @Override
     public @Nullable Collection<SanctionCommandArgument<?>> getArguments() {
         SuggestionProvider<SanctionCommandSender> playerSuggestions = SuggestionProvider.suggestingStrings(
-                manager.getProvider() != null ? manager.getProvider().getPlayerNames() : java.util.Collections.emptyList()
+                manager.getProvider() != null ? manager.getProvider().getPlayerNames() : Collections.emptyList()
         );
-        return Arrays.asList(
-                SanctionCommandArgument.build("player", StringParser.stringParser()).suggestionProvider(playerSuggestions),
-                SanctionCommandArgument.build("reason", StringParser.stringParser()).optional()
+        return Collections.singletonList(
+                SanctionCommandArgument.build("player", StringParser.stringParser()).suggestionProvider(playerSuggestions)
         );
     }
 
     @Override
     public @NotNull String getPermission() {
-        return "sanctionmanager.warn";
+        return "sanctionmanager.unwarn";
     }
 }

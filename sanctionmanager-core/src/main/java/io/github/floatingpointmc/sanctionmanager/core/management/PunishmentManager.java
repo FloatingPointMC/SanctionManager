@@ -41,6 +41,11 @@ public class PunishmentManager implements PunishmentManagerAPI {
     }
 
     @Override
+    public @NotNull Collection<Punishment> queryActiveWarns(@NotNull UUID target) {
+        return service.queryActiveWarns(target);
+    }
+
+    @Override
     public void addPunishment(@NotNull Punishment punishment) {
         PunishmentExecuteEvent event = new PunishmentExecuteEvent(punishment);
         StandaloneEventAPI.getApi().call(event);

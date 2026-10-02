@@ -114,6 +114,9 @@ public class VelocityMain {
                 binaryDir);
 
         if ("standalone".equals(mode)) {
+            // Initialize SanctionService for standalone mode
+            manager.initializeSanctionService(true, translationConfig, contextTemplate);
+
             VelocityCommandManager<SanctionCommandSender> commandManager =
                     new VelocityCommandManager<>(pluginContainer, proxy,
                             ExecutionCoordinator.asyncCoordinator(),

@@ -49,6 +49,11 @@ command:
     arg:
       player: The player to warn.
       reason: The reason for the warning.
+  unwarn:
+    usage: /unwarn <Player>
+    desc: Remove a warning from a specific player.
+    arg:
+      player: The player to unwarn.
 
 ban:
   permanent:

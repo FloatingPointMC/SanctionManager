@@ -1,7 +1,5 @@
 package io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin;
 
-import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.punishment.Punishment;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.AdminCommand;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
@@ -9,6 +7,9 @@ import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionCommandArgume
 import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionPlayer;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.SanctionCommandSender;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
+import io.github.floatingpointmc.sanctionmanager.minecraft.operation.UnmuteOperation;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.OperationResult;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.SanctionService;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.parser.standard.StringParser;
 import org.incendo.cloud.suggestion.SuggestionProvider;
@@ -45,17 +46,15 @@ public class UnmuteCommand extends AdminCommand {
             return;
         }
 
-        // Try to resolve UUID from online player first, then from PlayerRepository
+        // Resolve player UUID and name
         SanctionPlayer targetPlayer = provider.getPlayer(targetName);
         UUID targetUuid;
         String resolvedName;
 
         if (targetPlayer != null) {
-            // Player is online
             targetUuid = targetPlayer.getUniqueId();
             resolvedName = targetPlayer.getName();
         } else {
-            // Player is offline - query PlayerRepository
             targetUuid = manager.getPlayerService().findUuidByName(targetName);
             if (targetUuid == null) {
                 String errorMsg = translationConfig.get("error.player-not-found");
@@ -64,24 +63,48 @@ public class UnmuteCommand extends AdminCommand {
             }
             resolvedName = manager.getPlayerService().findNameByUuid(targetUuid);
             if (resolvedName == null) {
-                resolvedName = targetName; // Fallback to input name
+                resolvedName = targetName;
             }
         }
 
-        // Query active mute and remove it
-        PunishmentManagerAPI punishManager = manager.getPunishmentManager();
-        Punishment activeMute = punishManager.queryActiveMute(targetUuid);
+        // Get executor info
+        UUID executorUuid = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null;
+        String executorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
 
-        if (activeMute != null) {
-            punishManager.removePunishment(activeMute.getId());
-            sender.sendMessage("§aUnmuted " + resolvedName);
+        // Create operation object
+        UnmuteOperation operation = new UnmuteOperation(
+                targetUuid,
+                resolvedName,
+                executorUuid,
+                executorName
+        );
 
-            // Notify online player if they're online
-            if (targetPlayer != null) {
-                targetPlayer.sendMessage("§aYou have been unmuted.");
-            }
-        } else {
-            sender.sendMessage("§cNo active mute found for " + resolvedName);
+        // Execute via service
+        SanctionService service = manager.getSanctionService();
+        if (service == null) {
+            sender.sendMessage("§cSanctionService is not initialized.");
+            return;
+        }
+
+        OperationResult result = service.executeUnmute(operation);
+
+        // Handle result
+        switch (result) {
+            case SUCCESS:
+                sender.sendMessage("§aUnmuted " + resolvedName);
+                break;
+
+            case NO_ACTIVE_PUNISHMENT:
+                sender.sendMessage("§cNo active mute found for " + resolvedName);
+                break;
+
+            case ERROR:
+                sender.sendMessage("§cFailed to unmute player.");
+                break;
+
+            default:
+                sender.sendMessage("§cUnexpected result: " + result);
+                break;
         }
     }
 

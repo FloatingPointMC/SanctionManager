@@ -1,7 +1,5 @@
 package io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin;
 
-import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.punishment.Punishment;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.AdminCommand;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
@@ -9,6 +7,9 @@ import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionCommandArgume
 import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionPlayer;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.SanctionCommandSender;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
+import io.github.floatingpointmc.sanctionmanager.minecraft.operation.UnbanOperation;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.OperationResult;
+import io.github.floatingpointmc.sanctionmanager.minecraft.service.SanctionService;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.parser.standard.StringParser;
 import org.incendo.cloud.suggestion.SuggestionProvider;
@@ -45,17 +46,15 @@ public class UnbanCommand extends AdminCommand {
             return;
         }
 
-        // Try to resolve UUID from online player first, then from PlayerRepository
+        // Resolve player UUID and name
         SanctionPlayer targetPlayer = provider.getPlayer(targetName);
         UUID targetUuid;
         String resolvedName;
 
         if (targetPlayer != null) {
-            // Player is online
             targetUuid = targetPlayer.getUniqueId();
             resolvedName = targetPlayer.getName();
         } else {
-            // Player is offline - query PlayerRepository
             targetUuid = manager.getPlayerService().findUuidByName(targetName);
             if (targetUuid == null) {
                 String errorMsg = translationConfig.get("error.player-not-found");
@@ -64,19 +63,48 @@ public class UnbanCommand extends AdminCommand {
             }
             resolvedName = manager.getPlayerService().findNameByUuid(targetUuid);
             if (resolvedName == null) {
-                resolvedName = targetName; // Fallback to input name
+                resolvedName = targetName;
             }
         }
 
-        // Query active ban and remove it
-        PunishmentManagerAPI punishManager = manager.getPunishmentManager();
-        Punishment activeBan = punishManager.queryActiveBan(targetUuid);
+        // Get executor info
+        UUID executorUuid = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null;
+        String executorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
 
-        if (activeBan != null) {
-            punishManager.removePunishment(activeBan.getId());
-            sender.sendMessage("§aUnbanned " + resolvedName);
-        } else {
-            sender.sendMessage("§cNo active ban found for " + resolvedName);
+        // Create operation object
+        UnbanOperation operation = new UnbanOperation(
+                targetUuid,
+                resolvedName,
+                executorUuid,
+                executorName
+        );
+
+        // Execute via service
+        SanctionService service = manager.getSanctionService();
+        if (service == null) {
+            sender.sendMessage("§cSanctionService is not initialized.");
+            return;
+        }
+
+        OperationResult result = service.executeUnban(operation);
+
+        // Handle result
+        switch (result) {
+            case SUCCESS:
+                sender.sendMessage("§aUnbanned " + resolvedName);
+                break;
+
+            case NO_ACTIVE_PUNISHMENT:
+                sender.sendMessage("§cNo active ban found for " + resolvedName);
+                break;
+
+            case ERROR:
+                sender.sendMessage("§cFailed to unban player.");
+                break;
+
+            default:
+                sender.sendMessage("§cUnexpected result: " + result);
+                break;
         }
     }
 
