@@ -13,6 +13,7 @@ import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationCon
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationFormatter;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
 import org.incendo.cloud.context.CommandContext;
+import org.incendo.cloud.parser.standard.DurationParser;
 import org.incendo.cloud.parser.standard.StringParser;
 import org.incendo.cloud.suggestion.SuggestionProvider;
 import org.jetbrains.annotations.NotNull;
@@ -187,7 +188,7 @@ public class MuteCommand extends AdminCommand {
         );
         return Arrays.asList(
                 SanctionCommandArgument.build("player", StringParser.stringParser()).suggestionProvider(playerSuggestions),
-                SanctionCommandArgument.build("duration", StringParser.stringParser()).optional(),
+                SanctionCommandArgument.build("duration", DurationParser.durationParser()).optional(),
                 SanctionCommandArgument.build("reason", StringParser.stringParser()).optional()
         );
     }
