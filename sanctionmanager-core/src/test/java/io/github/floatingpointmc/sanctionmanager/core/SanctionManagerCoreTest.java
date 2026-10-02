@@ -176,6 +176,7 @@ public class SanctionManagerCoreTest {
     void testTypeOrdinary() {
         assertEquals(0, Type.BAN.ordinal());
         assertEquals(1, Type.MUTE.ordinal());
+        assertEquals(2, Type.WARN.ordinal());
     }
 
     @Test
@@ -741,6 +742,126 @@ public class SanctionManagerCoreTest {
 
         Punishment result = service.queryActiveBan(target);
         assertNull(result);
+
+        repo.close();
+    }
+
+    @Test
+    void testWarnTypeSupport(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-warn");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+
+        UUID target = UUID.randomUUID();
+        PunishmentRecord warn = new PunishmentRecord(
+                0, 0, target, null,
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Warn reason", Type.WARN
+        );
+        repo.save(warn);
+
+        assertTrue(warn.getId() > 0);
+        assertTrue(warn.getRelId() > 0);
+
+        Punishment loaded = repo.findById(warn.getId());
+        assertNotNull(loaded);
+        assertEquals(Type.WARN, loaded.getType());
+        assertEquals(target, loaded.getTarget());
+        assertEquals("Warn reason", loaded.getReason());
+
+        repo.close();
+    }
+
+    @Test
+    void testWarnIndependentRelId(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-warn-relid");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, UUID.randomUUID(), null,
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Ban", Type.BAN
+        );
+        repo.save(ban);
+
+        PunishmentRecord mute = new PunishmentRecord(
+                0, 0, UUID.randomUUID(), null,
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Mute", Type.MUTE
+        );
+        repo.save(mute);
+
+        PunishmentRecord warn = new PunishmentRecord(
+                0, 0, UUID.randomUUID(), null,
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Warn", Type.WARN
+        );
+        repo.save(warn);
+
+        assertEquals(1, ban.getRelId());
+        assertEquals(1, mute.getRelId());
+        assertEquals(1, warn.getRelId());
+
+        assertNotEquals(ban.getId(), mute.getId());
+        assertNotEquals(ban.getId(), warn.getId());
+        assertNotEquals(mute.getId(), warn.getId());
+
+        repo.close();
+    }
+
+    @Test
+    void testQueryActiveWarnsIsolation(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-warn-isolation");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+
+        UUID target = UUID.randomUUID();
+
+        PunishmentRecord ban = new PunishmentRecord(
+                0, 0, target, null,
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Ban", Type.BAN
+        );
+        repo.save(ban);
+
+        PunishmentRecord warn = new PunishmentRecord(
+                0, 0, target, null,
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Warn", Type.WARN
+        );
+        repo.save(warn);
+
+        Collection<Punishment> bans = repo.findActiveBansByTarget(target);
+        Collection<Punishment> warns = repo.findActiveWarnsByTarget(target);
+
+        assertEquals(1, bans.size());
+        assertEquals(1, warns.size());
+        assertEquals(Type.BAN, bans.iterator().next().getType());
+        assertEquals(Type.WARN, warns.iterator().next().getType());
+
+        repo.close();
+    }
+
+    @Test
+    void testPunishmentServiceQueryActiveWarn(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-warn-service");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        PunishmentRecord warn = new PunishmentRecord(
+                0, 0, target, null,
+                LocalDateTime.now(), null, false, null, false, null,
+                false, null, "Service warn test", Type.WARN
+        );
+
+        service.addPunishment(warn);
+
+        Punishment activeWarn = service.queryActiveWarn(target);
+        assertNotNull(activeWarn);
+        assertEquals(Type.WARN, activeWarn.getType());
+
+        Punishment activeBan = service.queryActiveBan(target);
+        assertNull(activeBan);
 
         repo.close();
     }

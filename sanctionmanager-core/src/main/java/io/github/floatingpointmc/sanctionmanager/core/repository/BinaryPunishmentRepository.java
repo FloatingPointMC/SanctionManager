@@ -27,10 +27,12 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
     private final AtomicInteger nextPunishmentId = new AtomicInteger(1);
     private final AtomicInteger nextBanId = new AtomicInteger(1);
     private final AtomicInteger nextMuteId = new AtomicInteger(1);
+    private final AtomicInteger nextWarnId = new AtomicInteger(1);
 
     private final Map<Integer, PunishmentRecord> punishmentsById = new LinkedHashMap<>();
     private final Map<Integer, PunishmentRecord> bansById = new LinkedHashMap<>();
     private final Map<Integer, PunishmentRecord> mutesById = new LinkedHashMap<>();
+    private final Map<Integer, PunishmentRecord> warnsById = new LinkedHashMap<>();
 
     public BinaryPunishmentRepository(@NotNull Path dataDir) {
         try {
@@ -61,6 +63,7 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
             nextPunishmentId.set(dis.readInt());
             nextBanId.set(dis.readInt());
             nextMuteId.set(dis.readInt());
+            nextWarnId.set(dis.readInt());
 
             int banCount = dis.readInt();
             for (int i = 0; i < banCount; i++) {
@@ -74,13 +77,20 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
                 mutesById.put(mute.getRelId(), mute);
             }
 
+            int warnCount = dis.readInt();
+            for (int i = 0; i < warnCount; i++) {
+                PunishmentRecord warn = readDetailRecord(dis, Type.WARN);
+                warnsById.put(warn.getRelId(), warn);
+            }
+
             int punishmentCount = dis.readInt();
             for (int i = 0; i < punishmentCount; i++) {
                 int id = dis.readInt();
                 int relId = dis.readInt();
                 byte typeVal = dis.readByte();
                 Type type = Type.values()[typeVal];
-                PunishmentRecord detail = type == Type.BAN ? bansById.get(relId) : mutesById.get(relId);
+                PunishmentRecord detail = type == Type.BAN ? bansById.get(relId) :
+                                          (type == Type.MUTE ? mutesById.get(relId) : warnsById.get(relId));
                 if (detail != null) {
                     PunishmentRecord record = new PunishmentRecord(
                             id, relId, detail.getTarget(), detail.getExecutor(),
@@ -131,6 +141,7 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
                 dos.writeInt(nextPunishmentId.get());
                 dos.writeInt(nextBanId.get());
                 dos.writeInt(nextMuteId.get());
+                dos.writeInt(nextWarnId.get());
 
                 dos.writeInt(bansById.size());
                 for (PunishmentRecord ban : bansById.values()) {
@@ -140,6 +151,11 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
                 dos.writeInt(mutesById.size());
                 for (PunishmentRecord mute : mutesById.values()) {
                     writeDetailRecord(dos, mute);
+                }
+
+                dos.writeInt(warnsById.size());
+                for (PunishmentRecord warn : warnsById.values()) {
+                    writeDetailRecord(dos, warn);
                 }
 
                 dos.writeInt(punishmentsById.size());
@@ -247,6 +263,22 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
         }
     }
 
+    @Override
+    public @NotNull Collection<Punishment> findActiveWarnsByTarget(@NotNull UUID target) {
+        lock.readLock().lock();
+        try {
+            List<Punishment> result = new ArrayList<>();
+            for (PunishmentRecord p : punishmentsById.values()) {
+                if (p.getType() == Type.WARN && p.getTarget().equals(target) && isActive(p)) {
+                    result.add(p);
+                }
+            }
+            return result;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     private boolean isActive(@NotNull PunishmentRecord p) {
         if (p.isOverridden() || p.isWithdrawn()) return false;
         return p.getExpiryTime() == null || !p.getExpiryTime().isBefore(LocalDateTime.now());
@@ -264,8 +296,10 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
             int relId;
             if (record.getType() == Type.BAN) {
                 relId = nextBanId.getAndIncrement();
-            } else {
+            } else if (record.getType() == Type.MUTE) {
                 relId = nextMuteId.getAndIncrement();
+            } else {
+                relId = nextWarnId.getAndIncrement();
             }
             int punishmentId = nextPunishmentId.getAndIncrement();
 
@@ -280,8 +314,10 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
             punishmentsById.put(punishmentId, saved);
             if (saved.getType() == Type.BAN) {
                 bansById.put(relId, saved);
-            } else {
+            } else if (saved.getType() == Type.MUTE) {
                 mutesById.put(relId, saved);
+            } else {
+                warnsById.put(relId, saved);
             }
 
             record.setId(punishmentId);
@@ -313,8 +349,10 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
             punishmentsById.put(id, record);
             if (record.getType() == Type.BAN) {
                 bansById.put(relId, record);
-            } else {
+            } else if (record.getType() == Type.MUTE) {
                 mutesById.put(relId, record);
+            } else {
+                warnsById.put(relId, record);
             }
 
             saveToFile();
@@ -332,8 +370,10 @@ public class BinaryPunishmentRepository implements PunishmentRepository, AutoClo
                 int relId = existing.getRelId();
                 if (existing.getType() == Type.BAN) {
                     bansById.remove(relId);
-                } else {
+                } else if (existing.getType() == Type.MUTE) {
                     mutesById.remove(relId);
+                } else {
+                    warnsById.remove(relId);
                 }
             }
             saveToFile();

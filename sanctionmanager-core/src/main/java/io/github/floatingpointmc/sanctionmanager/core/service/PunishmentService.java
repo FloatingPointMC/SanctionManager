@@ -75,7 +75,7 @@ public class PunishmentService {
         if (cached.isPresent()) {
             return cached.get(); // May be null
         }
-        
+
         // Cache miss - query DB
         LocalDateTime now = LocalDateTime.now();
         Collection<Punishment> fromDb = repository.findByTarget(target);
@@ -86,10 +86,33 @@ public class PunishmentService {
             }
             cache.put(p);
         }
-        
+
         // Cache result (including null)
         cache.putActiveByTargetAndType(target, Type.MUTE, activeMute);
         return activeMute;
+    }
+
+    public @Nullable Punishment queryActiveWarn(@NotNull UUID target) {
+        // Check cache first
+        Optional<Punishment> cached = cache.findActiveByTargetAndType(target, Type.WARN);
+        if (cached.isPresent()) {
+            return cached.get(); // May be null
+        }
+
+        // Cache miss - query DB
+        LocalDateTime now = LocalDateTime.now();
+        Collection<Punishment> fromDb = repository.findByTarget(target);
+        Punishment activeWarn = null;
+        for (Punishment p : fromDb) {
+            if (p.getType() == Type.WARN && activeWarn == null && isActive(p, now)) {
+                activeWarn = p;
+            }
+            cache.put(p);
+        }
+
+        // Cache result (including null)
+        cache.putActiveByTargetAndType(target, Type.WARN, activeWarn);
+        return activeWarn;
     }
 
     public void addPunishment(@NotNull Punishment punishment) {

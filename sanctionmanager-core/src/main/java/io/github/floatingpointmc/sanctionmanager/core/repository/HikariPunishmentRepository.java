@@ -53,6 +53,21 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "withdrawn_by_uuid VARCHAR(36), " +
                     "reason VARCHAR(256));";
 
+    private static final String CREATE_WARN_TABLE =
+            "CREATE TABLE IF NOT EXISTS warn (" +
+                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "target_uuid VARCHAR(36) NOT NULL, " +
+                    "executor_uuid VARCHAR(36), " +
+                    "executing_time TIMESTAMP NOT NULL, " +
+                    "expiry_time TIMESTAMP, " +
+                    "overridden BOOLEAN NOT NULL DEFAULT FALSE, " +
+                    "overridden_by_id INT, " +
+                    "overriding BOOLEAN NOT NULL DEFAULT FALSE, " +
+                    "overridden_id INT, " +
+                    "withdrawn BOOLEAN NOT NULL DEFAULT FALSE, " +
+                    "withdrawn_by_uuid VARCHAR(36), " +
+                    "reason VARCHAR(256));";
+
     private static final String SELECT_PUNISHMENT_BY_ID =
             "SELECT p.id, p.rel_id, p.type FROM punishment p WHERE p.id = ?;";
 
@@ -82,6 +97,16 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "AND m.overridden = FALSE AND m.withdrawn = FALSE " +
                     "AND (m.expiry_time IS NULL OR m.expiry_time > CURRENT_TIMESTAMP);";
 
+    private static final String SELECT_ACTIVE_WARNS_BY_TARGET =
+            "SELECT p.id, p.rel_id, p.type, w.target_uuid, w.executor_uuid, " +
+                    "w.executing_time, w.expiry_time, w.overridden, w.overridden_by_id, " +
+                    "w.overriding, w.overridden_id, w.withdrawn, w.withdrawn_by_uuid, w.reason " +
+                    "FROM punishment p " +
+                    "JOIN warn w ON p.rel_id = w.id " +
+                    "WHERE p.type = ? AND w.target_uuid = ? " +
+                    "AND w.overridden = FALSE AND w.withdrawn = FALSE " +
+                    "AND (w.expiry_time IS NULL OR w.expiry_time > CURRENT_TIMESTAMP);";
+
     private static final String INSERT_BAN =
             "INSERT INTO ban (target_uuid, executor_uuid, executing_time, expiry_time, " +
                     "overridden, overridden_by_id, overriding, overridden_id, withdrawn, withdrawn_by_uuid, reason) " +
@@ -89,6 +114,11 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
 
     private static final String INSERT_MUTE =
             "INSERT INTO mute (target_uuid, executor_uuid, executing_time, expiry_time, " +
+                    "overridden, overridden_by_id, overriding, overridden_id, withdrawn, withdrawn_by_uuid, reason) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    private static final String INSERT_WARN =
+            "INSERT INTO warn (target_uuid, executor_uuid, executing_time, expiry_time, " +
                     "overridden, overridden_by_id, overriding, overridden_id, withdrawn, withdrawn_by_uuid, reason) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
@@ -105,6 +135,11 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                     "overridden = ?, overridden_by_id = ?, overriding = ?, overridden_id = ?, " +
                     "withdrawn = ?, withdrawn_by_uuid = ?, reason = ? WHERE id = ?;";
 
+    private static final String UPDATE_WARN =
+            "UPDATE warn SET target_uuid = ?, executor_uuid = ?, executing_time = ?, expiry_time = ?, " +
+                    "overridden = ?, overridden_by_id = ?, overriding = ?, overridden_id = ?, " +
+                    "withdrawn = ?, withdrawn_by_uuid = ?, reason = ? WHERE id = ?;";
+
     private static final String DELETE_PUNISHMENT =
             "DELETE FROM punishment WHERE id = ?;";
 
@@ -113,6 +148,9 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
 
     private static final String DELETE_MUTE =
             "DELETE FROM mute WHERE id = ?;";
+
+    private static final String DELETE_WARN =
+            "DELETE FROM warn WHERE id = ?;";
 
     private static final String SELECT_REL_ID_BY_PUNISHMENT_ID =
             "SELECT rel_id, type FROM punishment WHERE id = ?;";
@@ -136,6 +174,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
             stmt.executeUpdate(CREATE_PUNISHMENT_TABLE);
             stmt.executeUpdate(CREATE_BAN_TABLE);
             stmt.executeUpdate(CREATE_MUTE_TABLE);
+            stmt.executeUpdate(CREATE_WARN_TABLE);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize database tables", e);
         }
@@ -161,7 +200,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
     }
 
     private @Nullable Punishment findDetail(@NotNull Connection conn, int punishmentId, int relId, @NotNull Type type) throws SQLException {
-        String table = type == Type.BAN ? "ban" : "mute";
+        String table = type == Type.BAN ? "ban" : (type == Type.MUTE ? "mute" : "warn");
         String sql = "SELECT * FROM " + table + " WHERE id = ?;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, relId);
@@ -179,6 +218,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
         Collection<Punishment> result = new ArrayList<>();
         result.addAll(findActiveByTypeAndTarget(Type.BAN, target, false));
         result.addAll(findActiveByTypeAndTarget(Type.MUTE, target, false));
+        result.addAll(findActiveByTypeAndTarget(Type.WARN, target, false));
         return result;
     }
 
@@ -187,6 +227,7 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
         Collection<Punishment> result = new ArrayList<>();
         result.addAll(findActiveByTypeAndTarget(Type.BAN, target, true));
         result.addAll(findActiveByTypeAndTarget(Type.MUTE, target, true));
+        result.addAll(findActiveByTypeAndTarget(Type.WARN, target, true));
         return result;
     }
 
@@ -200,9 +241,15 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
         return findActiveByTypeAndTarget(Type.MUTE, target, true);
     }
 
+    @Override
+    public @NotNull Collection<Punishment> findActiveWarnsByTarget(@NotNull UUID target) {
+        return findActiveByTypeAndTarget(Type.WARN, target, true);
+    }
+
     private @NotNull Collection<Punishment> findActiveByTypeAndTarget(@NotNull Type type, @NotNull UUID target, boolean activeOnly) {
         Collection<Punishment> result = new ArrayList<>();
-        String sql = type == Type.BAN ? SELECT_ACTIVE_BANS_BY_TARGET : SELECT_ACTIVE_MUTES_BY_TARGET;
+        String sql = type == Type.BAN ? SELECT_ACTIVE_BANS_BY_TARGET :
+                     (type == Type.MUTE ? SELECT_ACTIVE_MUTES_BY_TARGET : SELECT_ACTIVE_WARNS_BY_TARGET);
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, type.ordinal());
@@ -241,7 +288,8 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
     }
 
     private int insertDetail(@NotNull Connection conn, @NotNull Punishment p) throws SQLException {
-        String sql = p.getType() == Type.BAN ? INSERT_BAN : INSERT_MUTE;
+        String sql = p.getType() == Type.BAN ? INSERT_BAN :
+                     (p.getType() == Type.MUTE ? INSERT_MUTE : INSERT_WARN);
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setDetailParams(ps, p);
             ps.executeUpdate();
@@ -270,7 +318,8 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
 
     @Override
     public void update(@NotNull Punishment punishment) {
-        String sql = punishment.getType() == Type.BAN ? UPDATE_BAN : UPDATE_MUTE;
+        String sql = punishment.getType() == Type.BAN ? UPDATE_BAN :
+                     (punishment.getType() == Type.MUTE ? UPDATE_MUTE : UPDATE_WARN);
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             setDetailParams(ps, punishment);
@@ -300,7 +349,8 @@ public class HikariPunishmentRepository implements PunishmentRepository, AutoClo
                         }
                     }
                 }
-                String detailDeleteSql = type == Type.BAN ? DELETE_BAN : DELETE_MUTE;
+                String detailDeleteSql = type == Type.BAN ? DELETE_BAN :
+                                         (type == Type.MUTE ? DELETE_MUTE : DELETE_WARN);
                 try (PreparedStatement ps = conn.prepareStatement(detailDeleteSql)) {
                     ps.setInt(1, relId);
                     ps.executeUpdate();

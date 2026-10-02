@@ -18,6 +18,8 @@ public interface PunishmentRepository {
 
     @NotNull Collection<Punishment> findActiveMutesByTarget(@NotNull UUID target);
 
+    @NotNull Collection<Punishment> findActiveWarnsByTarget(@NotNull UUID target);
+
     void save(@NotNull Punishment punishment);
 
     void update(@NotNull Punishment punishment);
