@@ -57,6 +57,11 @@ public class SpigotMain extends JavaPlugin {
             org.bukkit.entity.Player player = Bukkit.getPlayer(name);
             return player != null ? new SpigotSanctionPlayer(player) : null;
         }
+
+        @Override
+        public void schedule(@NotNull Runnable task) {
+            Bukkit.getScheduler().runTask(SpigotMain.this, task);
+        }
     };
 
     @Override
@@ -126,7 +131,6 @@ public class SpigotMain extends JavaPlugin {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private TranslationConfig loadTranslationConfig() {
         File file = new File(getDataFolder(), "translations.yml");
         if (!file.exists()) {

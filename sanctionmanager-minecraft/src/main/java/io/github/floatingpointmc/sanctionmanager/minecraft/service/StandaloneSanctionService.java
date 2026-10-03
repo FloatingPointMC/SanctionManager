@@ -21,17 +21,22 @@ import org.jetbrains.annotations.Nullable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Standalone implementation of SanctionService.
  * <p>
  * Directly executes operations against the Core API without any network transport.
+ * All operations are executed asynchronously.
  */
 public class StandaloneSanctionService implements SanctionService {
     private final @NotNull PunishmentManagerAPI punishmentManager;
     private final @Nullable MinecraftProvider provider;
     private final @NotNull TranslationConfig translationConfig;
     private final @NotNull TranslationContext contextTemplate;
+    private final @NotNull ExecutorService executorService;
 
     public StandaloneSanctionService(
             @NotNull PunishmentManagerAPI punishmentManager,
@@ -43,221 +48,240 @@ public class StandaloneSanctionService implements SanctionService {
         this.provider = provider;
         this.translationConfig = translationConfig;
         this.contextTemplate = contextTemplate;
+        this.executorService = Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "SanctionManager-Standalone-Async");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    @Override
+    public void shutdown() {
+        executorService.shutdown();
     }
 
     @Override
     public @NotNull OperationResult executeBan(@NotNull BanOperation operation) {
-        try {
-            PunishmentRecord punishment = new PunishmentRecord(
-                    0, 0,
-                    operation.getTargetUuid(),
-                    operation.getExecutorUuid(),
-                    LocalDateTime.now(),
-                    operation.getExpiryTime(),
-                    false, null, false, null,
-                    false, null,
-                    operation.getReason(),
-                    Type.BAN
-            );
+        CompletableFuture.runAsync(() -> {
+            try {
+                PunishmentRecord punishment = new PunishmentRecord(
+                        0, 0,
+                        operation.getTargetUuid(),
+                        operation.getExecutorUuid(),
+                        LocalDateTime.now(),
+                        operation.getExpiryTime(),
+                        false, null, false, null,
+                        false, null,
+                        operation.getReason(),
+                        Type.BAN
+                );
 
-            punishmentManager.addPunishment(punishment);
+                punishmentManager.addPunishment(punishment);
 
-            // Kick player if online
-            if (provider != null) {
-                SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
-                if (targetPlayer != null) {
-                    TranslationContext.Punishment msgContext = buildPunishmentContext(
-                            punishment, operation.getTargetUuid(), operation.getTargetName(),
-                            operation.getExecutorUuid(), operation.getExecutorName(),
-                            operation.getExpiryTime(), operation.getReason()
-                    );
+                // Kick player if online (schedule to main thread)
+                if (provider != null) {
+                    provider.schedule(() -> {
+                        SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
+                        if (targetPlayer != null) {
+                            TranslationContext.Punishment msgContext = TranslationContext.Punishment.builder()
+                                    .id(punishment.getId())
+                                    .relId(punishment.getRelId())
+                                    .target(operation.getTargetUuid())
+                                    .targetName(targetPlayer.getName())
+                                    .executor(operation.getExecutorUuid() != null ? operation.getExecutorUuid() : new UUID(0, 0))
+                                    .operatorName("[Console]")
+                                    .executingTime(punishment.getExecutingTime())
+                                    .expiryTime(operation.getExpiryTime())
+                                    .reason(operation.getReason())
+                                    .pluginName(contextTemplate.getPluginName())
+                                    .pluginVersion(contextTemplate.getPluginVersion())
+                                    .build();
 
-                    boolean isTemp = operation.getExpiryTime() != null;
-                    List<String> lines = isTemp
-                            ? translationConfig.getStringList("ban.temporary")
-                            : translationConfig.getStringList("ban.permanent");
-                    String kickMessage = TranslationFormatter.format(lines, msgContext);
-                    targetPlayer.kick(kickMessage);
+                            boolean isTemp = operation.getExpiryTime() != null;
+                            List<String> lines = isTemp
+                                    ? translationConfig.getStringList("ban.temporary")
+                                    : translationConfig.getStringList("ban.permanent");
+                            String kickMessage = TranslationFormatter.format(lines, msgContext);
+                            targetPlayer.kick(kickMessage);
+                        }
+                    });
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        }, executorService);
 
-            return OperationResult.SUCCESS;
-        } catch (Exception e) {
-            return OperationResult.ERROR;
-        }
+        return OperationResult.SUCCESS;
     }
 
     @Override
     public @NotNull OperationResult executeUnban(@NotNull UnbanOperation operation) {
-        try {
-            Punishment activeBan = punishmentManager.queryActiveBan(operation.getTargetUuid());
-
-            if (activeBan != null) {
-                punishmentManager.removePunishment(activeBan.getId());
-                return OperationResult.SUCCESS;
-            } else {
-                return OperationResult.NO_ACTIVE_PUNISHMENT;
+        CompletableFuture.runAsync(() -> {
+            try {
+                Punishment activeBan = punishmentManager.queryActiveBan(operation.getTargetUuid());
+                if (activeBan != null) {
+                    punishmentManager.removePunishment(activeBan.getId());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            return OperationResult.ERROR;
-        }
+        }, executorService);
+
+        return OperationResult.SUCCESS;
     }
 
     @Override
     public @NotNull OperationResult executeMute(@NotNull MuteOperation operation) {
-        try {
-            PunishmentRecord punishment = new PunishmentRecord(
-                    0, 0,
-                    operation.getTargetUuid(),
-                    operation.getExecutorUuid(),
-                    LocalDateTime.now(),
-                    operation.getExpiryTime(),
-                    false, null, false, null,
-                    false, null,
-                    operation.getReason(),
-                    Type.MUTE
-            );
+        CompletableFuture.runAsync(() -> {
+            try {
+                PunishmentRecord punishment = new PunishmentRecord(
+                        0, 0,
+                        operation.getTargetUuid(),
+                        operation.getExecutorUuid(),
+                        LocalDateTime.now(),
+                        operation.getExpiryTime(),
+                        false, null, false, null,
+                        false, null,
+                        operation.getReason(),
+                        Type.MUTE
+                );
 
-            punishmentManager.addPunishment(punishment);
+                punishmentManager.addPunishment(punishment);
 
-            // Notify player if online
-            if (provider != null) {
-                SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
-                if (targetPlayer != null) {
-                    TranslationContext.Punishment msgContext = buildPunishmentContext(
-                            punishment, operation.getTargetUuid(), operation.getTargetName(),
-                            operation.getExecutorUuid(), operation.getExecutorName(),
-                            operation.getExpiryTime(), operation.getReason()
-                    );
+                // Notify player if online (schedule to main thread)
+                if (provider != null) {
+                    provider.schedule(() -> {
+                        SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
+                        if (targetPlayer != null) {
+                            TranslationContext.Punishment msgContext = TranslationContext.Punishment.builder()
+                                    .id(punishment.getId())
+                                    .relId(punishment.getRelId())
+                                    .target(operation.getTargetUuid())
+                                    .targetName(targetPlayer.getName())
+                                    .executor(operation.getExecutorUuid() != null ? operation.getExecutorUuid() : new UUID(0, 0))
+                                    .operatorName("[Console]")
+                                    .executingTime(punishment.getExecutingTime())
+                                    .expiryTime(operation.getExpiryTime())
+                                    .reason(operation.getReason())
+                                    .pluginName(contextTemplate.getPluginName())
+                                    .pluginVersion(contextTemplate.getPluginVersion())
+                                    .build();
 
-                    boolean isTemp = operation.getExpiryTime() != null;
-                    List<String> lines = isTemp
-                            ? translationConfig.getStringList("mute.temporary")
-                            : translationConfig.getStringList("mute.permanent");
+                            boolean isTemp = operation.getExpiryTime() != null;
+                            List<String> lines = isTemp
+                                    ? translationConfig.getStringList("mute.temporary")
+                                    : translationConfig.getStringList("mute.permanent");
 
-                    for (String line : TranslationFormatter.formatLines(lines, msgContext)) {
-                        targetPlayer.sendMessage(line);
-                    }
+                            for (String line : TranslationFormatter.formatLines(lines, msgContext)) {
+                                targetPlayer.sendMessage(line);
+                            }
+                        }
+                    });
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        }, executorService);
 
-            return OperationResult.SUCCESS;
-        } catch (Exception e) {
-            return OperationResult.ERROR;
-        }
+        return OperationResult.SUCCESS;
     }
 
     @Override
     public @NotNull OperationResult executeUnmute(@NotNull UnmuteOperation operation) {
-        try {
-            Punishment activeMute = punishmentManager.queryActiveMute(operation.getTargetUuid());
+        CompletableFuture.runAsync(() -> {
+            try {
+                Punishment activeMute = punishmentManager.queryActiveMute(operation.getTargetUuid());
+                if (activeMute != null) {
+                    punishmentManager.removePunishment(activeMute.getId());
 
-            if (activeMute != null) {
-                punishmentManager.removePunishment(activeMute.getId());
-
-                // Notify player if online
-                if (provider != null) {
-                    SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
-                    if (targetPlayer != null) {
-                        targetPlayer.sendMessage("§aYou have been unmuted.");
+                    // Notify player if online (schedule to main thread)
+                    if (provider != null) {
+                        provider.schedule(() -> {
+                            SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
+                            if (targetPlayer != null) {
+                                targetPlayer.sendMessage("§aYou have been unmuted.");
+                            }
+                        });
                     }
                 }
-
-                return OperationResult.SUCCESS;
-            } else {
-                return OperationResult.NO_ACTIVE_PUNISHMENT;
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            return OperationResult.ERROR;
-        }
+        }, executorService);
+
+        return OperationResult.SUCCESS;
     }
 
     @Override
     public @NotNull OperationResult executeWarn(@NotNull WarnOperation operation) {
-        try {
-            PunishmentRecord punishment = new PunishmentRecord(
-                    0, 0,
-                    operation.getTargetUuid(),
-                    operation.getExecutorUuid(),
-                    LocalDateTime.now(),
-                    null,
-                    false, null, false, null,
-                    false, null,
-                    operation.getReason(),
-                    Type.WARN
-            );
+        CompletableFuture.runAsync(() -> {
+            try {
+                PunishmentRecord punishment = new PunishmentRecord(
+                        0, 0,
+                        operation.getTargetUuid(),
+                        operation.getExecutorUuid(),
+                        LocalDateTime.now(),
+                        null,
+                        false, null, false, null,
+                        false, null,
+                        operation.getReason(),
+                        Type.WARN
+                );
 
-            punishmentManager.addPunishment(punishment);
+                punishmentManager.addPunishment(punishment);
 
-            // Notify player if online
-            if (provider != null) {
-                SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
-                if (targetPlayer != null) {
-                    String reason = operation.getReason() != null ? operation.getReason() : "No reason provided";
-                    targetPlayer.sendMessage("§6You have been warned: §f" + reason);
+                // Notify player if online (schedule to main thread)
+                if (provider != null) {
+                    provider.schedule(() -> {
+                        SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
+                        if (targetPlayer != null) {
+                            String reason = operation.getReason() != null ? operation.getReason() : "No reason provided";
+                            targetPlayer.sendMessage("§6You have been warned: §f" + reason);
+                        }
+                    });
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        }, executorService);
 
-            return OperationResult.SUCCESS;
-        } catch (Exception e) {
-            return OperationResult.ERROR;
-        }
+        return OperationResult.SUCCESS;
     }
 
     @Override
     public @NotNull OperationResult executeUnwarn(@NotNull UnwarnOperation operation) {
-        try {
-            // Find the most recent active warn for this player
-            java.util.Collection<Punishment> activeWarns = punishmentManager.queryActiveWarns(operation.getTargetUuid());
+        CompletableFuture.runAsync(() -> {
+            try {
+                java.util.Collection<Punishment> activeWarns = punishmentManager.queryActiveWarns(operation.getTargetUuid());
 
-            if (!activeWarns.isEmpty()) {
-                // Remove the most recent warn
-                Punishment mostRecent = null;
-                for (Punishment warn : activeWarns) {
-                    if (mostRecent == null || warn.getExecutingTime().isAfter(mostRecent.getExecutingTime())) {
-                        mostRecent = warn;
-                    }
-                }
-
-                if (mostRecent != null) {
-                    punishmentManager.removePunishment(mostRecent.getId());
-
-                    // Notify player if online
-                    if (provider != null) {
-                        SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
-                        if (targetPlayer != null) {
-                            targetPlayer.sendMessage("§aOne of your warnings has been removed.");
+                if (!activeWarns.isEmpty()) {
+                    // Remove the most recent warn
+                    Punishment mostRecent = null;
+                    for (Punishment warn : activeWarns) {
+                        if (mostRecent == null || warn.getExecutingTime().isAfter(mostRecent.getExecutingTime())) {
+                            mostRecent = warn;
                         }
                     }
 
-                    return OperationResult.SUCCESS;
+                    if (mostRecent != null) {
+                        punishmentManager.removePunishment(mostRecent.getId());
+
+                        // Notify player if online (schedule to main thread)
+                        if (provider != null) {
+                            provider.schedule(() -> {
+                                SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
+                                if (targetPlayer != null) {
+                                    targetPlayer.sendMessage("§aOne of your warnings has been removed.");
+                                }
+                            });
+                        }
+                    }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        }, executorService);
 
-            return OperationResult.NO_ACTIVE_PUNISHMENT;
-        } catch (Exception e) {
-            return OperationResult.ERROR;
-        }
-    }
-
-    private TranslationContext.Punishment buildPunishmentContext(
-            PunishmentRecord punishment,
-            UUID targetUuid, String targetName,
-            UUID executorUuid, String executorName,
-            LocalDateTime expiryTime, String reason
-    ) {
-        return TranslationContext.Punishment.builder()
-                .id(punishment.getId())
-                .relId(punishment.getRelId())
-                .target(targetUuid)
-                .targetName(targetName)
-                .executor(executorUuid != null ? executorUuid : new UUID(0, 0))
-                .operatorName(executorName)
-                .executingTime(punishment.getExecutingTime())
-                .expiryTime(expiryTime)
-                .reason(reason)
-                .pluginName(contextTemplate.getPluginName())
-                .pluginVersion(contextTemplate.getPluginVersion())
-                .build();
+        return OperationResult.SUCCESS;
     }
 }

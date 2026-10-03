@@ -48,7 +48,7 @@ public class BanCommand extends AdminCommand {
             return;
         }
 
-        // Resolve player UUID and name
+        // Resolve player UUID
         SanctionPlayer targetPlayer = provider.getPlayer(targetName);
         UUID targetUuid;
         String resolvedName;
@@ -80,21 +80,19 @@ public class BanCommand extends AdminCommand {
             }
         }
 
-        // Get executor info
+        // Get executor UUID
         UUID executorUuid = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null;
         String executorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
 
-        // Create operation object
+        // Create operation object (without names)
         BanOperation operation = new BanOperation(
                 targetUuid,
-                resolvedName,
                 executorUuid,
-                executorName,
                 expiryTime,
                 reason
         );
 
-        // Execute via service
+        // Execute via service (async)
         SanctionService service = manager.getSanctionService();
         if (service == null) {
             sender.sendMessage("§cSanctionService is not initialized.");

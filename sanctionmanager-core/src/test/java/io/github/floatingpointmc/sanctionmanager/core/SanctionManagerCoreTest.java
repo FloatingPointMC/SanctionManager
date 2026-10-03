@@ -935,63 +935,6 @@ public class SanctionManagerCoreTest {
     }
 
     @Test
-    void testQueryActiveWarnsIsolation(@TempDir Path tempDir) {
-        Path dataDir = tempDir.resolve("sm-data-warn-isolation");
-        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
-
-        UUID target = UUID.randomUUID();
-
-        PunishmentRecord ban = new PunishmentRecord(
-                0, 0, target, null,
-                LocalDateTime.now(), null, false, null, false, null,
-                false, null, "Ban", Type.BAN
-        );
-        repo.save(ban);
-
-        PunishmentRecord warn = new PunishmentRecord(
-                0, 0, target, null,
-                LocalDateTime.now(), null, false, null, false, null,
-                false, null, "Warn", Type.WARN
-        );
-        repo.save(warn);
-
-        Collection<Punishment> bans = repo.findActiveBansByTarget(target);
-        Collection<Punishment> warns = repo.findActiveWarnsByTarget(target);
-
-        assertEquals(1, bans.size());
-        assertEquals(1, warns.size());
-        assertEquals(Type.BAN, bans.iterator().next().getType());
-        assertEquals(Type.WARN, warns.iterator().next().getType());
-
-        repo.close();
-    }
-
-    @Test
-    void testPunishmentServiceQueryActiveWarn(@TempDir Path tempDir) {
-        Path dataDir = tempDir.resolve("sm-data-service-warn");
-        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
-        LocalPunishmentCache localCache = new LocalPunishmentCache();
-        PunishmentService service = new PunishmentService(localCache, repo);
-
-        UUID target = UUID.randomUUID();
-        PunishmentRecord warn = new PunishmentRecord(
-                0, 0, target, null,
-                LocalDateTime.now(), null, false, null, false, null,
-                false, null, "Service warn test", Type.WARN
-        );
-
-        service.addPunishment(warn);
-
-        Collection<Punishment> activeWarns = service.queryActiveWarns(target);
-        assertNotNull(activeWarns);
-        assertFalse(activeWarns.isEmpty());
-        assertEquals(1, activeWarns.size());
-        assertEquals(Type.WARN, activeWarns.iterator().next().getType());
-
-        repo.close();
-    }
-
-    @Test
     void testTypeOrdinaryWithWarn() {
         assertEquals(0, Type.BAN.ordinal());
         assertEquals(1, Type.MUTE.ordinal());

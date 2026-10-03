@@ -42,6 +42,12 @@ public class MinecraftCommandTest {
             public @Nullable SanctionPlayer getPlayer(@NotNull String name) {
                 return null;
             }
+
+            @Override
+            public void schedule(@NotNull Runnable task) {
+                // Execute immediately in test environment
+                task.run();
+            }
         }, new StorageConfig());
         SanctionCommandManager commandManager = new SanctionCommandManager(new CommandManager<SanctionCommandSender>(ExecutionCoordinator.asyncCoordinator(), CommandRegistrationHandler.nullCommandRegistrationHandler()) {
             @Override

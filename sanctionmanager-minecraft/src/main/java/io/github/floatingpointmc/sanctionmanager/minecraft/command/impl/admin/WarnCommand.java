@@ -64,16 +64,13 @@ public class WarnCommand extends AdminCommand {
             }
         }
 
-        // Get executor info
+        // Get executor UUID
         UUID executorUuid = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null;
-        String executorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
 
-        // Create operation object
+        // Create operation object (without names)
         WarnOperation operation = new WarnOperation(
                 targetUuid,
-                resolvedName,
                 executorUuid,
-                executorName,
                 reason
         );
 

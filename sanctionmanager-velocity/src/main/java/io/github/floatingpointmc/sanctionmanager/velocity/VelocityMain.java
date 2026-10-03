@@ -69,6 +69,13 @@ public class VelocityMain {
                     .map(VelocitySanctionPlayer::new)
                     .orElse(null);
         }
+
+        @Override
+        public void schedule(@NotNull Runnable task) {
+            // Velocity doesn't have a separate main thread for most operations
+            // Execute immediately - Velocity API is generally thread-safe
+            task.run();
+        }
     };
 
     @Inject

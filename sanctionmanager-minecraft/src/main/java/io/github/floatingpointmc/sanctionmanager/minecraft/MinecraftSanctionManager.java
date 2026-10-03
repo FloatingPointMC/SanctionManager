@@ -19,7 +19,7 @@ public class MinecraftSanctionManager {
     private final @NotNull SanctionManagerCore core;
     private final @Nullable MinecraftProvider provider;
     private final @NotNull PlayerService playerService;
-    private @Nullable SanctionService sanctionService;
+    private @NotNull SanctionService sanctionService;
 
     public MinecraftSanctionManager(@NotNull MinecraftProvider provider, @NotNull StorageConfig storageConfig) {
         this.provider = provider;
@@ -107,7 +107,7 @@ public class MinecraftSanctionManager {
         return playerService;
     }
 
-    public @Nullable SanctionService getSanctionService() {
+    public @NotNull SanctionService getSanctionService() {
         return sanctionService;
     }
 
@@ -136,6 +136,7 @@ public class MinecraftSanctionManager {
     }
 
     public void shutdown() {
+        sanctionService.shutdown();
         playerService.close();
         core.shutdown();
     }

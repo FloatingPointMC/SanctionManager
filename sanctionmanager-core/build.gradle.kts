@@ -38,7 +38,7 @@ publishing {
             from(components["java"])
 
             pom {
-                name = "SanctionManager-API"
+                name = "SanctionManager-Core"
                 description = "A standalone, platform-independent sanction management system."
 
                 url.set("https://github.com/floatingpointmc/sanctionmanager")

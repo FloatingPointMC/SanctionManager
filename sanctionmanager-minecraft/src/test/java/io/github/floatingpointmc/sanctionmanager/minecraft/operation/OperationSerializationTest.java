@@ -15,14 +15,12 @@ class OperationSerializationTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
         LocalDateTime expiry = LocalDateTime.now().plusDays(1);
-        BanOperation original = new BanOperation(target, "Player1", executor, "Admin1", expiry, "Cheating");
+        BanOperation original = new BanOperation(target, executor, expiry, "Cheating");
 
         BanOperation deserialized = serializeAndDeserialize(original);
 
         assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
-        assertEquals(original.getTargetName(), deserialized.getTargetName());
         assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
-        assertEquals(original.getExecutorName(), deserialized.getExecutorName());
         assertEquals(original.getExpiryTime(), deserialized.getExpiryTime());
         assertEquals(original.getReason(), deserialized.getReason());
     }
@@ -31,14 +29,12 @@ class OperationSerializationTest {
     void testBanOperationSerializationWithNullExpiry() throws Exception {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
-        BanOperation original = new BanOperation(target, "Player1", executor, "Admin1", null, "Permanent ban");
+        BanOperation original = new BanOperation(target, executor, null, "Permanent ban");
 
         BanOperation deserialized = serializeAndDeserialize(original);
 
         assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
-        assertEquals(original.getTargetName(), deserialized.getTargetName());
         assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
-        assertEquals(original.getExecutorName(), deserialized.getExecutorName());
         assertNull(deserialized.getExpiryTime());
         assertEquals(original.getReason(), deserialized.getReason());
     }
@@ -47,14 +43,12 @@ class OperationSerializationTest {
     void testUnbanOperationSerialization() throws Exception {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
-        UnbanOperation original = new UnbanOperation(target, "Player1", executor, "Admin1");
+        UnbanOperation original = new UnbanOperation(target, executor);
 
         UnbanOperation deserialized = serializeAndDeserialize(original);
 
         assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
-        assertEquals(original.getTargetName(), deserialized.getTargetName());
         assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
-        assertEquals(original.getExecutorName(), deserialized.getExecutorName());
     }
 
     @Test
@@ -62,14 +56,12 @@ class OperationSerializationTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
         LocalDateTime expiry = LocalDateTime.now().plusHours(1);
-        MuteOperation original = new MuteOperation(target, "Player1", executor, "Admin1", expiry, "Spam");
+        MuteOperation original = new MuteOperation(target, executor, expiry, "Spam");
 
         MuteOperation deserialized = serializeAndDeserialize(original);
 
         assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
-        assertEquals(original.getTargetName(), deserialized.getTargetName());
         assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
-        assertEquals(original.getExecutorName(), deserialized.getExecutorName());
         assertEquals(original.getExpiryTime(), deserialized.getExpiryTime());
         assertEquals(original.getReason(), deserialized.getReason());
     }
@@ -78,14 +70,12 @@ class OperationSerializationTest {
     void testMuteOperationSerializationWithNullExpiry() throws Exception {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
-        MuteOperation original = new MuteOperation(target, "Player1", executor, "Admin1", null, "Permanent mute");
+        MuteOperation original = new MuteOperation(target, executor, null, "Permanent mute");
 
         MuteOperation deserialized = serializeAndDeserialize(original);
 
         assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
-        assertEquals(original.getTargetName(), deserialized.getTargetName());
         assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
-        assertEquals(original.getExecutorName(), deserialized.getExecutorName());
         assertNull(deserialized.getExpiryTime());
         assertEquals(original.getReason(), deserialized.getReason());
     }
@@ -94,14 +84,37 @@ class OperationSerializationTest {
     void testUnmuteOperationSerialization() throws Exception {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
-        UnmuteOperation original = new UnmuteOperation(target, "Player1", executor, "Admin1");
+        UnmuteOperation original = new UnmuteOperation(target, executor);
 
         UnmuteOperation deserialized = serializeAndDeserialize(original);
 
         assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
-        assertEquals(original.getTargetName(), deserialized.getTargetName());
         assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
-        assertEquals(original.getExecutorName(), deserialized.getExecutorName());
+    }
+
+    @Test
+    void testWarnOperationSerialization() throws Exception {
+        UUID target = UUID.randomUUID();
+        UUID executor = UUID.randomUUID();
+        WarnOperation original = new WarnOperation(target, executor, "Warning message");
+
+        WarnOperation deserialized = serializeAndDeserialize(original);
+
+        assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
+        assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
+        assertEquals(original.getReason(), deserialized.getReason());
+    }
+
+    @Test
+    void testUnwarnOperationSerialization() throws Exception {
+        UUID target = UUID.randomUUID();
+        UUID executor = UUID.randomUUID();
+        UnwarnOperation original = new UnwarnOperation(target, executor);
+
+        UnwarnOperation deserialized = serializeAndDeserialize(original);
+
+        assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
+        assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
     }
 
     private <T extends Serializable> T serializeAndDeserialize(T object) throws Exception {

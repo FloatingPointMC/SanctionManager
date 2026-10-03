@@ -13,40 +13,27 @@ import java.util.UUID;
  * communication between Command layer, Service layer, and Bridge/Proxy transport.
  * <p>
  * Immutable and serializable for network transmission.
+ * Only contains UUIDs for identity - names are resolved at presentation layer.
  */
 public final class UnbanOperation implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private final @NotNull UUID targetUuid;
-    private final @NotNull String targetName;
     private final @Nullable UUID executorUuid;
-    private final @NotNull String executorName;
 
     public UnbanOperation(
             @NotNull UUID targetUuid,
-            @NotNull String targetName,
-            @Nullable UUID executorUuid,
-            @NotNull String executorName
+            @Nullable UUID executorUuid
     ) {
         this.targetUuid = targetUuid;
-        this.targetName = targetName;
         this.executorUuid = executorUuid;
-        this.executorName = executorName;
     }
 
     public @NotNull UUID getTargetUuid() {
         return targetUuid;
     }
 
-    public @NotNull String getTargetName() {
-        return targetName;
-    }
-
     public @Nullable UUID getExecutorUuid() {
         return executorUuid;
-    }
-
-    public @NotNull String getExecutorName() {
-        return executorName;
     }
 }

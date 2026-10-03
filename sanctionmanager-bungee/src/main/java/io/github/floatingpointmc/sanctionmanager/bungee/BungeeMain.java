@@ -59,6 +59,13 @@ public class BungeeMain extends Plugin {
             net.md_5.bungee.api.connection.ProxiedPlayer player = getProxy().getPlayer(name);
             return player != null ? new BungeeSanctionPlayer(player) : null;
         }
+
+        @Override
+        public void schedule(@NotNull Runnable task) {
+            // BungeeCord doesn't have a separate main thread for most operations
+            // Execute immediately - BungeeCord API is generally thread-safe
+            task.run();
+        }
     };
 
     @Override
