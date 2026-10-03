@@ -75,11 +75,11 @@ public class MuteCommand extends AdminCommand {
         }
 
         // Parse duration
-        LocalDateTime expiryTime = null;
+        java.time.Duration duration = null;
         if (durationStr != null) {
             try {
                 long seconds = parseDuration(durationStr);
-                expiryTime = LocalDateTime.now().plusSeconds(seconds);
+                duration = java.time.Duration.ofSeconds(seconds);
             } catch (IllegalArgumentException e) {
                 sender.sendMessage("Invalid duration format: " + durationStr);
                 return;
@@ -94,22 +94,20 @@ public class MuteCommand extends AdminCommand {
         MuteOperation operation = new MuteOperation(
                 targetUuid,
                 executorUuid,
-                expiryTime,
+                duration,
                 reason
         );
 
         // Execute via service (async)
         SanctionService service = manager.getSanctionService();
-        if (service == null) {
-            sender.sendMessage("§cSanctionService is not initialized.");
-            return;
-        }
 
         OperationResult result = service.executeMute(operation);
 
         // Handle result
         switch (result) {
             case SUCCESS:
+                LocalDateTime expiryTime = duration != null ? LocalDateTime.now().plus(duration) : null;
+
                 TranslationContext.Punishment msgContext = TranslationContext.Punishment.builder()
                         .id(0)
                         .relId(0)

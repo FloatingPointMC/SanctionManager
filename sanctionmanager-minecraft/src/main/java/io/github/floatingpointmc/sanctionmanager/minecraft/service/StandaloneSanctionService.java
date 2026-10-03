@@ -64,12 +64,17 @@ public class StandaloneSanctionService implements SanctionService {
     public @NotNull OperationResult executeBan(@NotNull BanOperation operation) {
         CompletableFuture.runAsync(() -> {
             try {
+                LocalDateTime executingTime = LocalDateTime.now();
+                LocalDateTime expiryTime = operation.getDuration() != null
+                        ? executingTime.plus(operation.getDuration())
+                        : null;
+
                 PunishmentRecord punishment = new PunishmentRecord(
                         0, 0,
                         operation.getTargetUuid(),
                         operation.getExecutorUuid(),
-                        LocalDateTime.now(),
-                        operation.getExpiryTime(),
+                        executingTime,
+                        expiryTime,
                         false, null, false, null,
                         false, null,
                         operation.getReason(),
@@ -91,13 +96,13 @@ public class StandaloneSanctionService implements SanctionService {
                                     .executor(operation.getExecutorUuid() != null ? operation.getExecutorUuid() : new UUID(0, 0))
                                     .operatorName("[Console]")
                                     .executingTime(punishment.getExecutingTime())
-                                    .expiryTime(operation.getExpiryTime())
+                                    .expiryTime(expiryTime)
                                     .reason(operation.getReason())
                                     .pluginName(contextTemplate.getPluginName())
                                     .pluginVersion(contextTemplate.getPluginVersion())
                                     .build();
 
-                            boolean isTemp = operation.getExpiryTime() != null;
+                            boolean isTemp = expiryTime != null;
                             List<String> lines = isTemp
                                     ? translationConfig.getStringList("ban.temporary")
                                     : translationConfig.getStringList("ban.permanent");
@@ -134,12 +139,17 @@ public class StandaloneSanctionService implements SanctionService {
     public @NotNull OperationResult executeMute(@NotNull MuteOperation operation) {
         CompletableFuture.runAsync(() -> {
             try {
+                LocalDateTime executingTime = LocalDateTime.now();
+                LocalDateTime expiryTime = operation.getDuration() != null
+                        ? executingTime.plus(operation.getDuration())
+                        : null;
+
                 PunishmentRecord punishment = new PunishmentRecord(
                         0, 0,
                         operation.getTargetUuid(),
                         operation.getExecutorUuid(),
-                        LocalDateTime.now(),
-                        operation.getExpiryTime(),
+                        executingTime,
+                        expiryTime,
                         false, null, false, null,
                         false, null,
                         operation.getReason(),
@@ -161,13 +171,13 @@ public class StandaloneSanctionService implements SanctionService {
                                     .executor(operation.getExecutorUuid() != null ? operation.getExecutorUuid() : new UUID(0, 0))
                                     .operatorName("[Console]")
                                     .executingTime(punishment.getExecutingTime())
-                                    .expiryTime(operation.getExpiryTime())
+                                    .expiryTime(expiryTime)
                                     .reason(operation.getReason())
                                     .pluginName(contextTemplate.getPluginName())
                                     .pluginVersion(contextTemplate.getPluginVersion())
                                     .build();
 
-                            boolean isTemp = operation.getExpiryTime() != null;
+                            boolean isTemp = expiryTime != null;
                             List<String> lines = isTemp
                                     ? translationConfig.getStringList("mute.temporary")
                                     : translationConfig.getStringList("mute.permanent");
