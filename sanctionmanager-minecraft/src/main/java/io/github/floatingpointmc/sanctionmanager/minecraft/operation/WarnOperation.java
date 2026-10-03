@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.UUID;
 
 /**
@@ -16,19 +17,22 @@ import java.util.UUID;
  * Only contains UUIDs for identity - names are resolved at presentation layer.
  */
 public final class WarnOperation implements Serializable {
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
 
     private final @NotNull UUID targetUuid;
     private final @Nullable UUID executorUuid;
+    private final @Nullable Duration duration;
     private final @Nullable String reason;
 
     public WarnOperation(
             @NotNull UUID targetUuid,
             @Nullable UUID executorUuid,
+            @Nullable Duration duration,
             @Nullable String reason
     ) {
         this.targetUuid = targetUuid;
         this.executorUuid = executorUuid;
+        this.duration = duration;
         this.reason = reason;
     }
 
@@ -38,6 +42,10 @@ public final class WarnOperation implements Serializable {
 
     public @Nullable UUID getExecutorUuid() {
         return executorUuid;
+    }
+
+    public @Nullable Duration getDuration() {
+        return duration;
     }
 
     public @Nullable String getReason() {

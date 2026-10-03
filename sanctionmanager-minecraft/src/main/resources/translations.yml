@@ -44,10 +44,11 @@ command:
     arg:
       player: The player to unmute.
   warn:
-    usage: /warn <Player> [Reason]
+    usage: /warn <Player> [Duration] [Reason]
     desc: Warn a specific player.
     arg:
       player: The player to warn.
+      duration: The duration of the warning, default permanent.
       reason: The reason for the warning.
   unwarn:
     usage: /unwarn <Player>
@@ -90,9 +91,19 @@ mute:
     - "\u00A77Mute ID: \u00A7f#%id%"
     - "\u00A7c-------------------------------------------------------------------"
 warn:
-  message:
+  permanent:
     - "\u00A7e-------------------------------------------------------------------"
     - "\u00A7eYou have received a warning from the server."
+    - ""
+    - "\u00A77Reason: \u00A7f%reason%"
+    - "\u00A77Find out more: \u00A7ehttps://github.com/FloatingPointMC/SanctionManager"
+    - ""
+    - "\u00A77Warn ID: \u00A7f#%id%"
+    - "\u00A7e-------------------------------------------------------------------"
+  temporary:
+    - "\u00A7e-------------------------------------------------------------------"
+    - "\u00A7eYou have received a temporary warning from the server."
+    - "\u00A77This warning will expire in \u00A7f%duration%"
     - ""
     - "\u00A77Reason: \u00A7f%reason%"
     - "\u00A77Find out more: \u00A7ehttps://github.com/FloatingPointMC/SanctionManager"

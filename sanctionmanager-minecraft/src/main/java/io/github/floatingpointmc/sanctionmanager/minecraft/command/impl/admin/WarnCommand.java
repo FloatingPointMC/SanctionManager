@@ -17,6 +17,8 @@ import org.incendo.cloud.suggestion.SuggestionProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.UUID;
@@ -36,6 +38,7 @@ public class WarnCommand extends AdminCommand {
     public void execute(@NotNull CommandContext<SanctionCommandSender> context) {
         SanctionCommandSender sender = context.sender();
         String targetName = context.get("player");
+        String durationStr = context.<String>optional("duration").orElse(null);
         String reason = context.<String>optional("reason").orElse(null);
 
         MinecraftProvider provider = manager.getProvider();
@@ -67,10 +70,18 @@ public class WarnCommand extends AdminCommand {
         // Get executor UUID
         UUID executorUuid = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null;
 
+        // Parse duration
+        Duration duration = null;
+        if (durationStr != null) {
+            long seconds = parseDuration(durationStr);
+            duration = Duration.ofSeconds(seconds);
+        }
+
         // Create operation object (without names)
         WarnOperation operation = new WarnOperation(
                 targetUuid,
                 executorUuid,
+                duration,
                 reason
         );
 
@@ -87,7 +98,11 @@ public class WarnCommand extends AdminCommand {
         switch (result) {
             case SUCCESS:
                 String displayReason = reason != null ? reason : "No reason provided";
-                sender.sendMessage("§6Warned §f" + resolvedName + " §6for: §f" + displayReason);
+                if (duration != null) {
+                    sender.sendMessage("§6Warned §f" + resolvedName + " §6for §f" + durationStr + " §6for: §f" + displayReason);
+                } else {
+                    sender.sendMessage("§6Warned §f" + resolvedName + " §6for: §f" + displayReason);
+                }
                 break;
 
             case ERROR:
@@ -98,6 +113,69 @@ public class WarnCommand extends AdminCommand {
                 sender.sendMessage("§cUnexpected result: " + result);
                 break;
         }
+    }
+
+    /**
+     * Parse duration string (e.g., "30m", "1h", "7d") to seconds.
+     * Supports: s (seconds), m (minutes), h (hours), d (days), w (weeks), mo (months), y (years)
+     */
+    private long parseDuration(String durationStr) {
+        if (durationStr == null || durationStr.isEmpty()) {
+            return 0;
+        }
+
+        long totalSeconds = 0;
+        StringBuilder numberBuffer = new StringBuilder();
+
+        for (int i = 0; i < durationStr.length(); i++) {
+            char c = durationStr.charAt(i);
+
+            if (Character.isDigit(c)) {
+                numberBuffer.append(c);
+            } else {
+                if (numberBuffer.length() == 0) {
+                    continue;
+                }
+
+                long number = Long.parseLong(numberBuffer.toString());
+                numberBuffer.setLength(0);
+
+                // Check for two-character units
+                String unit;
+                if (i + 1 < durationStr.length() && durationStr.charAt(i + 1) == 'o' && c == 'm') {
+                    unit = "mo";
+                    i++; // skip 'o'
+                } else {
+                    unit = String.valueOf(c);
+                }
+
+                switch (unit) {
+                    case "s":
+                        totalSeconds += number;
+                        break;
+                    case "m":
+                        totalSeconds += number * 60;
+                        break;
+                    case "h":
+                        totalSeconds += number * 3600;
+                        break;
+                    case "d":
+                        totalSeconds += number * 86400;
+                        break;
+                    case "w":
+                        totalSeconds += number * 604800;
+                        break;
+                    case "mo":
+                        totalSeconds += number * 2592000; // 30 days
+                        break;
+                    case "y":
+                        totalSeconds += number * 31536000; // 365 days
+                        break;
+                }
+            }
+        }
+
+        return totalSeconds;
     }
 
     @Override
@@ -112,7 +190,8 @@ public class WarnCommand extends AdminCommand {
         );
         return Arrays.asList(
                 SanctionCommandArgument.build("player", StringParser.stringParser()).suggestionProvider(playerSuggestions),
-                SanctionCommandArgument.build("reason", StringParser.stringParser()).optional()
+                SanctionCommandArgument.build("duration", StringParser.stringParser()).optional(),
+                SanctionCommandArgument.build("reason", StringParser.greedyStringParser()).optional()
         );
     }
 

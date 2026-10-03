@@ -935,6 +935,62 @@ public class SanctionManagerCoreTest {
     }
 
     @Test
+    void testWarnWithTemporaryDuration(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-warn-temp");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        LocalDateTime executingTime = LocalDateTime.now();
+        LocalDateTime expiryTime = executingTime.plusDays(7);
+
+        PunishmentRecord warn = new PunishmentRecord(
+                0, 0, target, null,
+                executingTime, expiryTime, false, null, false, null,
+                false, null, "Temporary warning", Type.WARN
+        );
+        service.addPunishment(warn);
+
+        Punishment result = service.queryActiveWarn(target);
+        assertNotNull(result);
+        assertEquals(target, result.getTarget());
+        assertEquals("Temporary warning", result.getReason());
+        assertEquals(Type.WARN, result.getType());
+        assertNotNull(result.getExpiryTime());
+        assertEquals(expiryTime, result.getExpiryTime());
+
+        repo.close();
+    }
+
+    @Test
+    void testWarnWithPermanentDuration(@TempDir Path tempDir) {
+        Path dataDir = tempDir.resolve("sm-data-warn-perm");
+        BinaryPunishmentRepository repo = new BinaryPunishmentRepository(dataDir);
+        LocalPunishmentCache localCache = new LocalPunishmentCache();
+        PunishmentService service = new PunishmentService(localCache, repo);
+
+        UUID target = UUID.randomUUID();
+        LocalDateTime executingTime = LocalDateTime.now();
+
+        PunishmentRecord warn = new PunishmentRecord(
+                0, 0, target, null,
+                executingTime, null, false, null, false, null,
+                false, null, "Permanent warning", Type.WARN
+        );
+        service.addPunishment(warn);
+
+        Punishment result = service.queryActiveWarn(target);
+        assertNotNull(result);
+        assertEquals(target, result.getTarget());
+        assertEquals("Permanent warning", result.getReason());
+        assertEquals(Type.WARN, result.getType());
+        assertNull(result.getExpiryTime());
+
+        repo.close();
+    }
+
+    @Test
     void testTypeOrdinaryWithWarn() {
         assertEquals(0, Type.BAN.ordinal());
         assertEquals(1, Type.MUTE.ordinal());

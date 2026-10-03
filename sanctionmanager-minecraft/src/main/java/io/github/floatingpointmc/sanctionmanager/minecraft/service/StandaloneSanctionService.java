@@ -226,12 +226,17 @@ public class StandaloneSanctionService implements SanctionService {
     public @NotNull OperationResult executeWarn(@NotNull WarnOperation operation) {
         CompletableFuture.runAsync(() -> {
             try {
+                LocalDateTime executingTime = LocalDateTime.now();
+                LocalDateTime expiryTime = operation.getDuration() != null
+                        ? executingTime.plus(operation.getDuration())
+                        : null;
+
                 PunishmentRecord punishment = new PunishmentRecord(
                         0, 0,
                         operation.getTargetUuid(),
                         operation.getExecutorUuid(),
-                        LocalDateTime.now(),
-                        null,
+                        executingTime,
+                        expiryTime,
                         false, null, false, null,
                         false, null,
                         operation.getReason(),
@@ -245,8 +250,28 @@ public class StandaloneSanctionService implements SanctionService {
                     provider.schedule(() -> {
                         SanctionPlayer targetPlayer = provider.getPlayer(operation.getTargetUuid());
                         if (targetPlayer != null) {
-                            String reason = operation.getReason() != null ? operation.getReason() : "No reason provided";
-                            targetPlayer.sendMessage("§6You have been warned: §f" + reason);
+                            TranslationContext.Punishment msgContext = TranslationContext.Punishment.builder()
+                                    .id(punishment.getId())
+                                    .relId(punishment.getRelId())
+                                    .target(operation.getTargetUuid())
+                                    .targetName(targetPlayer.getName())
+                                    .executor(operation.getExecutorUuid() != null ? operation.getExecutorUuid() : new UUID(0, 0))
+                                    .operatorName("[Console]")
+                                    .executingTime(punishment.getExecutingTime())
+                                    .expiryTime(expiryTime)
+                                    .reason(operation.getReason())
+                                    .pluginName(contextTemplate.getPluginName())
+                                    .pluginVersion(contextTemplate.getPluginVersion())
+                                    .build();
+
+                            boolean isTemp = expiryTime != null;
+                            List<String> lines = isTemp
+                                    ? translationConfig.getStringList("warn.temporary")
+                                    : translationConfig.getStringList("warn.permanent");
+
+                            for (String line : TranslationFormatter.formatLines(lines, msgContext)) {
+                                targetPlayer.sendMessage(line);
+                            }
                         }
                     });
                 }

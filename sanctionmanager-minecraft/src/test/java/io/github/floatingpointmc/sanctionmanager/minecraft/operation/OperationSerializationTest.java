@@ -96,12 +96,28 @@ class OperationSerializationTest {
     void testWarnOperationSerialization() throws Exception {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
-        WarnOperation original = new WarnOperation(target, executor, "Warning message");
+        Duration duration = Duration.ofDays(7);
+        WarnOperation original = new WarnOperation(target, executor, duration, "Warning message");
 
         WarnOperation deserialized = serializeAndDeserialize(original);
 
         assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
         assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
+        assertEquals(original.getDuration(), deserialized.getDuration());
+        assertEquals(original.getReason(), deserialized.getReason());
+    }
+
+    @Test
+    void testWarnOperationSerializationWithNullDuration() throws Exception {
+        UUID target = UUID.randomUUID();
+        UUID executor = UUID.randomUUID();
+        WarnOperation original = new WarnOperation(target, executor, null, "Permanent warning");
+
+        WarnOperation deserialized = serializeAndDeserialize(original);
+
+        assertEquals(original.getTargetUuid(), deserialized.getTargetUuid());
+        assertEquals(original.getExecutorUuid(), deserialized.getExecutorUuid());
+        assertNull(deserialized.getDuration());
         assertEquals(original.getReason(), deserialized.getReason());
     }
 
