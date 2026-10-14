@@ -1,7 +1,8 @@
 package io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin;
 
-import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.punishment.Punishment;
+import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftEntryTypes;
+import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import java.util.Optional;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.AdminCommand;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
@@ -68,15 +69,14 @@ public class UnbanCommand extends AdminCommand {
             }
         }
 
-        // Query active ban and remove it
-        PunishmentManagerAPI punishManager = manager.getPunishmentManager();
-        Punishment activeBan = punishManager.queryActiveBan(targetUuid);
+        // Withdraw the latest active ban while preserving entry history
+        Optional<Entry> active = manager.getEntryService().queryLatestActive(targetUuid, MinecraftEntryTypes.BAN);
 
-        if (activeBan != null) {
-            punishManager.removePunishment(activeBan.getId());
-            sender.sendMessage("§aUnbanned " + resolvedName);
+        if (active.isPresent()) {
+            active.get().withdraw(sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null);
+            sender.sendMessage("搂aUnbanned " + resolvedName);
         } else {
-            sender.sendMessage("§cNo active ban found for " + resolvedName);
+            sender.sendMessage("搂cNo active ban found for " + resolvedName);
         }
     }
 

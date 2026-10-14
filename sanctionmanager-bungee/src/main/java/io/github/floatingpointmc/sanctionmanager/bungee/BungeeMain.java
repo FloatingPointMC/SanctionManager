@@ -1,6 +1,5 @@
 package io.github.floatingpointmc.sanctionmanager.bungee;
 
-import io.github.floatingpointmc.sanctionmanager.api.SanctionManagerAPI;
 import io.github.floatingpointmc.sanctionmanager.bungee.command.BungeeCommandSender;
 import io.github.floatingpointmc.sanctionmanager.bungee.command.BungeeSanctionPlayer;
 import io.github.floatingpointmc.sanctionmanager.bungee.config.Config;
@@ -111,7 +110,7 @@ public class BungeeMain extends Plugin {
             getLogger().info("SanctionManager is running in proxy mode, no commands available.");
         }
         getProxy().getPluginManager().registerListener(this,
-                new PlayerListener(manager, SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate));
+                new PlayerListener(manager, translationConfig, contextTemplate));
     }
 
     @Override

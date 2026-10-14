@@ -13,7 +13,7 @@ import java.util.UUID;
  * <p>
  * Uses a separate table: sm_minecraft_players
  * <p>
- * This is SEPARATE from Core's punishment tables.
+ * This is SEPARATE from Core's Entry tables.
  * Minecraft owns player data; Core owns sanction data.
  * <p>
  * This is PERSISTENCE ONLY. Data survives server restarts.

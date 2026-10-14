@@ -33,11 +33,16 @@ dependencies {
 
 tasks.shadowJar {
     archiveClassifier.set("")
+    filesMatching("META-INF/services/**") { duplicatesStrategy = DuplicatesStrategy.INCLUDE }
     mergeServiceFiles()
     relocate("redis.clients.jedis", "io.github.floatingpointmc.sanctionmanager.libs.jedis")
     relocate("com.zaxxer.hikari", "io.github.floatingpointmc.sanctionmanager.libs.hikari")
     relocate("org.bstats", "io.github.floatingpointmc.sanctionmanager.libs.bstats")
-    minimize()
+    minimize {
+        // Native registry implementations and JDBC drivers are loaded reflectively.
+        exclude(dependency("io.github.vlouboos:standaloneevent-common:.*"))
+        exclude(dependency("com.h2database:h2:.*"))
+    }
 }
 
 tasks.test {

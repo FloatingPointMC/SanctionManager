@@ -1,8 +1,8 @@
 package io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin;
 
-import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.punishment.Type;
-import io.github.floatingpointmc.sanctionmanager.core.model.PunishmentRecord;
+import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftEntryTypes;
+import com.google.gson.JsonObject;
+import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.AdminCommand;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
@@ -90,39 +90,18 @@ public class MuteCommand extends AdminCommand {
         UUID executorUuid = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null;
         String operatorName = sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getName() : "[Console]";
 
-        PunishmentRecord punishment = new PunishmentRecord(
-                0, 0,
-                targetUuid,
-                executorUuid,
-                LocalDateTime.now(),
-                expiryTime,
-                false, null, false, null,
-                false, null,
-                reason,
-                Type.MUTE
-        );
+        Entry entry = manager.getEntryService().create(
+                targetUuid, MinecraftEntryTypes.MUTE, executorUuid,
+                expiryTime == null ? null : java.util.Date.from(expiryTime.atZone(java.time.ZoneId.systemDefault()).toInstant()),
+                reason, new JsonObject());
 
-        PunishmentManagerAPI punishManager = manager.getPunishmentManager();
-        punishManager.addPunishment(punishment);
-
-        TranslationContext.Punishment msgContext = TranslationContext.Punishment.builder()
-                .id(punishment.getId())
-                .relId(punishment.getRelId())
-                .target(targetUuid)
-                .targetName(resolvedName)
-                .executor(executorUuid != null ? executorUuid : new UUID(0, 0))
-                .operatorName(operatorName)
-                .executingTime(punishment.getExecutingTime())
-                .expiryTime(expiryTime)
-                .reason(reason)
-                .pluginName(contextTemplate.getPluginName())
-                .pluginVersion(contextTemplate.getPluginVersion())
-                .build();
+        TranslationContext.EntryMessage msgContext = contextTemplate.forEntry(
+                entry.snapshot(), resolvedName, operatorName);
 
         boolean isTemp = expiryTime != null;
         java.util.List<String> lines = isTemp ? translationConfig.getStringList("mute.temporary") : translationConfig.getStringList("mute.permanent");
 
-        String confirmMsg = "§aMuted " + resolvedName + (isTemp ? " for " + durationStr : " permanently") + (reason != null ? " (Reason: " + reason + ")" : "");
+        String confirmMsg = "鎼俛Muted " + resolvedName + (isTemp ? " for " + durationStr : " permanently") + (reason != null ? " (Reason: " + reason + ")" : "");
         sender.sendMessage(confirmMsg);
 
         // Notify online player if they're online

@@ -1,7 +1,8 @@
 package io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.admin;
 
-import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.punishment.Punishment;
+import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftEntryTypes;
+import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import java.util.Optional;
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.impl.AdminCommand;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
@@ -68,20 +69,19 @@ public class UnmuteCommand extends AdminCommand {
             }
         }
 
-        // Query active mute and remove it
-        PunishmentManagerAPI punishManager = manager.getPunishmentManager();
-        Punishment activeMute = punishManager.queryActiveMute(targetUuid);
+        // Withdraw the latest active mute while preserving entry history
+        Optional<Entry> active = manager.getEntryService().queryLatestActive(targetUuid, MinecraftEntryTypes.MUTE);
 
-        if (activeMute != null) {
-            punishManager.removePunishment(activeMute.getId());
-            sender.sendMessage("§aUnmuted " + resolvedName);
+        if (active.isPresent()) {
+            active.get().withdraw(sender instanceof SanctionPlayer ? ((SanctionPlayer) sender).getUniqueId() : null);
+            sender.sendMessage("搂aUnmuted " + resolvedName);
 
             // Notify online player if they're online
             if (targetPlayer != null) {
-                targetPlayer.sendMessage("§aYou have been unmuted.");
+                targetPlayer.sendMessage("搂aYou have been unmuted.");
             }
         } else {
-            sender.sendMessage("§cNo active mute found for " + resolvedName);
+            sender.sendMessage("搂cNo active mute found for " + resolvedName);
         }
     }
 

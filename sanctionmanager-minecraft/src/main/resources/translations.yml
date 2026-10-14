@@ -1,11 +1,11 @@
 # Available variables:
-#   %duration% - The duration left of the punishment if temporary
+#   %duration% - The duration left of the entry if temporary
 #   %time% - The time the ban will expire if temporary
-#   %reason% - The reason for the punishment
-#   %id% - The ID of the punishment
-#   %name% - The name of the punished player
-#   %uuid% - The UUID of the punished player
-#   %operator% - The operator of the punishment
+#   %reason% - The reason for the entry
+#   %id% - The ID of the entry
+#   %name% - The name of the target player
+#   %uuid% - The UUID of the target player
+#   %operator% - The operator of the entry
 #   %plugin% - The name of the plugin
 #   %version% - The version of the plugin
 
