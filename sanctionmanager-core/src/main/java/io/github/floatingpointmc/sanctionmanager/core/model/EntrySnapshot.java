@@ -2,155 +2,97 @@ package io.github.floatingpointmc.sanctionmanager.core.model;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.UUID;
 
 /**
- * Internal implementation of Entry representing a persisted database record.
+ * Internal implementation of Entry representing a pending (not yet persisted) entry.
  * <p>
- * This class wraps persistent data retrieved from the database. It includes
- * a version field for optimistic locking during concurrent modifications.
+ * This class wraps the initial data provided by the caller before persistence.
+ * Attempting to access persistent-only fields (id, relId, executingTime, etc.) throws {@code IllegalStateException}.
  * </p>
  */
 public class EntrySnapshot implements Entry {
-    private final long id;
-    private final long relId;
+    @Getter(onMethod_ = {@Override})
     private final @NotNull String type;
+    @Getter(onMethod_ = {@Override})
     private final @NotNull UUID target;
+    @Getter(onMethod_ = {@Override})
     private final @NotNull UUID executor;
-    private final @Nullable Date expiryTime;
-    private final @NotNull Date executingTime;
+    @Getter(onMethod_ = {@Override})
+    private final @Nullable Duration duration;
+    @Getter(onMethod_ = {@Override})
     private final @Nullable String reason;
-    private @Nullable JsonObject data;
-    private @Nullable UUID withdrawnBy;
-    private @Nullable String withdrawReason;
-    private boolean overridden;
-    private @Nullable Long overriddenBy;
-    private int version;
+    private final @Nullable JsonObject data;
 
-    public EntrySnapshot(long id, long relId, @NotNull String type, @NotNull UUID target, @NotNull UUID executor,
-                         @Nullable Date expiryTime, @NotNull Date executingTime, @Nullable String reason,
-                         @Nullable JsonObject data, @Nullable UUID withdrawnBy, @Nullable String withdrawReason,
-                         boolean overridden, @Nullable Long overriddenBy, int version) {
-        this.id = id;
-        this.relId = relId;
+    public EntrySnapshot(@NotNull String type, @NotNull UUID target, @NotNull UUID executor,
+                         @Nullable Duration duration, @Nullable String reason, @Nullable JsonObject data) {
         this.type = type;
         this.target = target;
         this.executor = executor;
-        this.expiryTime = expiryTime;
-        this.executingTime = executingTime;
+        this.duration = duration;
         this.reason = reason;
         this.data = data;
-        this.withdrawnBy = withdrawnBy;
-        this.withdrawReason = withdrawReason;
-        this.overridden = overridden;
-        this.overriddenBy = overriddenBy;
-        this.version = version;
     }
 
     @Override
-    public long getId() {
-        return id;
+    public long getId() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public long getRelId() {
-        return relId;
+    public long getRelId() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public @NotNull String getType() {
-        return type;
+    public @Nullable Date getExpiryTime() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public @NotNull UUID getTarget() {
-        return target;
+    public @NotNull Date getExecutingTime() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public @NotNull UUID getExecutor() {
-        return executor;
+    public boolean isWithdrawn() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public @Nullable String getReason() {
-        return reason;
+    public @Nullable UUID getWithdrawnBy() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public @NotNull Date getExecutingTime() {
-        return new Date(executingTime.getTime());
+    public @Nullable String getWithdrawalReason() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public @Nullable Date getExpiryTime() {
-        return expiryTime != null ? new Date(expiryTime.getTime()) : null;
+    public boolean isOverridden() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
-    public boolean isWithdrawn() {
-        return withdrawnBy != null;
-    }
-
-    @Override
-    public @Nullable UUID getWithdrawnBy() {
-        return withdrawnBy;
-    }
-
-    @Override
-    public @Nullable String getWithdrawReason() {
-        return withdrawReason;
-    }
-
-    @Override
-    public boolean isOverridden() {
-        return overridden;
-    }
-
-    @Override
-    public @Nullable Long getOverriddenBy() {
-        return overriddenBy;
+    public @Nullable Long getOverriddenBy() throws IllegalStateException {
+        throw new IllegalStateException("Entry is not persisted yet.");
     }
 
     @Override
     public @NotNull JsonObject getData() {
-        return data != null ? new JsonObject().deepCopy() : new JsonObject();
+        if (data == null)
+            throw new IllegalStateException("Extra data is not enabled for this entry(type=" + getType() + ")");
+        return data.deepCopy();
     }
 
-    // Getters and setters for internal usage
     public @Nullable JsonObject getDataInternal() {
         return data;
-    }
-
-    public void setData(@Nullable JsonObject data) {
-        this.data = data;
-    }
-
-    public void setWithdrawnBy(@Nullable UUID withdrawnBy) {
-        this.withdrawnBy = withdrawnBy;
-    }
-
-    public void setWithdrawReason(@Nullable String withdrawReason) {
-        this.withdrawReason = withdrawReason;
-    }
-
-    public int getVersion() {
-        return version;
-    }
-
-    public void setVersion(int version) {
-        this.version = version;
-    }
-
-    public void setOverridden(boolean overridden) {
-        this.overridden = overridden;
-    }
-
-    public void setOverriddenBy(@Nullable Long overriddenBy) {
-        this.overriddenBy = overriddenBy;
     }
 }

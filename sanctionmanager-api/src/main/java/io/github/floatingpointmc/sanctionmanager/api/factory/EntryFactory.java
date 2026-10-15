@@ -38,7 +38,7 @@ public interface EntryFactory {
      *                  If provided, the object is stored as-is; modifications to the original do not affect the entry.
      *
      * @return a new pending Entry instance
-     * @throws NullPointerException if {@code type}, {@code target}, or {@code executor} is null
+     * @throws NullPointerException if {@code type}, {@code target}, or {@code executor} is null, or data is null when extra data is required
      * @throws IllegalArgumentException if type is empty, unregistered, or has invalid format, or if duration is negative
      * @throws IllegalStateException if the Core is not initialized or has been shut down
      */

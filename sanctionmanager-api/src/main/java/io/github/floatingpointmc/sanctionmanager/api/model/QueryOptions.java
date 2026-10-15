@@ -169,19 +169,13 @@ public final class QueryOptions {
      * @throws IllegalArgumentException if any type is empty or unregistered
      */
     @NotNull
-    public QueryOptions types(@NotNull String... types) {
-        if (types == null) {
-            throw new NullPointerException("types cannot be null");
-        }
+    public QueryOptions types(String @NotNull ... types) {
         QueryOptions copy = new QueryOptions();
         copy.includeExpired = this.includeExpired;
         copy.includeWithdrawn = this.includeWithdrawn;
         copy.includeOverridden = this.includeOverridden;
         for (String type : types) {
-            if (type == null) {
-                throw new NullPointerException("type cannot be null");
-            }
-            if (type.isEmpty()) {
+            if (type.trim().isEmpty()) {
                 throw new IllegalArgumentException("type cannot be empty");
             }
             copy.types.add(type);
@@ -204,10 +198,7 @@ public final class QueryOptions {
      */
     @NotNull
     public QueryOptions addType(@NotNull String type) {
-        if (type == null) {
-            throw new NullPointerException("type cannot be null");
-        }
-        if (type.isEmpty()) {
+        if (type.trim().isEmpty()) {
             throw new IllegalArgumentException("type cannot be empty");
         }
         QueryOptions copy = new QueryOptions();

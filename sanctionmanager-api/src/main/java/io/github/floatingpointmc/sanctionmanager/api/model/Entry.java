@@ -147,10 +147,10 @@ public interface Entry {
      * This is only meaningful if {@link #isWithdrawn()} returns {@code true}.
      * </p>
      *
-     * @return the withdraw reason, or {@code null}
+     * @return the withdrawal reason, or {@code null}
      * @throws IllegalStateException if the entry has not been persisted
      */
-    @Nullable String getWithdrawReason() throws IllegalStateException;
+    @Nullable String getWithdrawalReason() throws IllegalStateException;
 
     /**
      * Indicates whether this entry is permanently marked as overridden.

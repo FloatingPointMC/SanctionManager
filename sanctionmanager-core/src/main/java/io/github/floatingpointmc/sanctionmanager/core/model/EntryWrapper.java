@@ -2,6 +2,7 @@ package io.github.floatingpointmc.sanctionmanager.core.model;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -11,16 +12,13 @@ import java.util.UUID;
 /**
  * Wrapper that delegates to an underlying Entry implementation.
  * <p>
- * This allows the Core to change the underlying implementation (from {@code EntryTempSnapshot}
- * to {@code EntrySnapshot}) while maintaining the same wrapper object identity.
+ * This allows the Core to change the underlying implementation (from {@code EntrySnapshot}
+ * to {@code EntryPersisted}) while maintaining the same wrapper object identity.
  * </p>
  */
+@AllArgsConstructor
 public class EntryWrapper implements Entry {
     public Entry entry;
-
-    public EntryWrapper(Entry entry) {
-        this.entry = entry;
-    }
 
     @Override
     public long getId() {
@@ -68,8 +66,8 @@ public class EntryWrapper implements Entry {
     }
 
     @Override
-    public @Nullable String getWithdrawReason() {
-        return entry.getWithdrawReason();
+    public @Nullable String getWithdrawalReason() {
+        return entry.getWithdrawalReason();
     }
 
     @Override

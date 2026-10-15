@@ -7,9 +7,10 @@ import io.github.floatingpointmc.sanctionmanager.api.management.EntryManager;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
-import io.github.floatingpointmc.sanctionmanager.core.model.EntryTempSnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryWrapper;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,15 +25,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * would use a database for persistence.
  * </p>
  */
+@RequiredArgsConstructor
 public class EntryManagerCore implements EntryManager {
     private final SanctionManagerCore core;
-    private final Map<Long, EntrySnapshot> entries = new ConcurrentHashMap<>();
+    private final Map<Long, EntryPersisted> entries = new ConcurrentHashMap<>();
     private final Map<String, AtomicLong> typeRelIdCounters = new ConcurrentHashMap<>();
     private final AtomicLong idCounter = new AtomicLong(0);
-
-    public EntryManagerCore(SanctionManagerCore core) {
-        this.core = core;
-    }
 
     @Override
     public void execute(@NotNull Entry entry) {
@@ -40,20 +38,16 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (entry == null) {
-            throw new NullPointerException("entry cannot be null");
-        }
-
         if (!(entry instanceof EntryWrapper)) {
             throw new IllegalArgumentException("Invalid Entry: not created by this Core");
         }
 
         EntryWrapper wrapper = (EntryWrapper) entry;
-        if (!(wrapper.entry instanceof EntryTempSnapshot)) {
+        if (!(wrapper.entry instanceof EntrySnapshot)) {
             throw new IllegalArgumentException("Entry has already been executed");
         }
 
-        EntryTempSnapshot tempSnapshot = (EntryTempSnapshot) wrapper.entry;
+        EntrySnapshot tempSnapshot = (EntrySnapshot) wrapper.entry;
 
         // Generate IDs
         long id = idCounter.incrementAndGet();
@@ -71,10 +65,10 @@ public class EntryManagerCore implements EntryManager {
         }
 
         // Create persistent snapshot and replace wrapper content
-        EntrySnapshot snapshot = new EntrySnapshot(
+        EntryPersisted snapshot = new EntryPersisted(
                 id, relId, type, tempSnapshot.getTarget(), tempSnapshot.getExecutor(),
                 expiryTime, executingTime, tempSnapshot.getReason(),
-                tempSnapshot.getData() != null ? new JsonObject().getAsJsonObject() : null,
+                tempSnapshot.getDataInternal() == null ? null : tempSnapshot.getData(),
                 null, null, false, null, 0
         );
 
@@ -90,18 +84,10 @@ public class EntryManagerCore implements EntryManager {
         if (!core.isInitialized()) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
-
-        if (target == null) {
-            throw new NullPointerException("target cannot be null");
-        }
-        if (options == null) {
-            throw new NullPointerException("options cannot be null");
-        }
-
         List<Entry> result = new ArrayList<>();
         Date now = new Date();
 
-        for (EntrySnapshot snapshot : entries.values()) {
+        for (EntryPersisted snapshot : entries.values()) {
             if (!snapshot.getTarget().equals(target)) {
                 continue;
             }
@@ -121,11 +107,7 @@ public class EntryManagerCore implements EntryManager {
             result.add(createSnapshot(snapshot));
         }
 
-        result.sort((a, b) -> {
-            int timeComp = a.getExecutingTime().compareTo(b.getExecutingTime());
-            if (timeComp != 0) return timeComp;
-            return Long.compare(a.getId(), b.getId());
-        });
+        result.sort(Comparator.comparing(Entry::getExecutingTime).thenComparingLong(Entry::getId));
 
         return Collections.unmodifiableList(result);
     }
@@ -136,18 +118,11 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (options == null) {
-            throw new NullPointerException("options cannot be null");
-        }
-        if (types == null) {
-            throw new NullPointerException("types cannot be null");
-        }
-
         Set<String> typeSet = new HashSet<>(Arrays.asList(types));
         List<Entry> result = new ArrayList<>();
         Date now = new Date();
 
-        for (EntrySnapshot snapshot : entries.values()) {
+        for (EntryPersisted snapshot : entries.values()) {
             if (!typeSet.isEmpty() && !typeSet.contains(snapshot.getType())) {
                 continue;
             }
@@ -163,11 +138,7 @@ public class EntryManagerCore implements EntryManager {
             result.add(createSnapshot(snapshot));
         }
 
-        result.sort((a, b) -> {
-            int timeComp = a.getExecutingTime().compareTo(b.getExecutingTime());
-            if (timeComp != 0) return timeComp;
-            return Long.compare(a.getId(), b.getId());
-        });
+        result.sort(Comparator.comparing(Entry::getExecutingTime).thenComparingLong(Entry::getId));
 
         return Collections.unmodifiableList(result);
     }
@@ -178,21 +149,15 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (target == null) {
-            throw new NullPointerException("target cannot be null");
-        }
-        if (types == null) {
-            throw new NullPointerException("types cannot be null");
-        }
         if (types.length == 0) {
             throw new IllegalArgumentException("types array cannot be empty");
         }
 
         Set<String> typeSet = new HashSet<>(Arrays.asList(types));
         Date now = new Date();
-        EntrySnapshot latest = null;
+        EntryPersisted latest = null;
 
-        for (EntrySnapshot snapshot : entries.values()) {
+        for (EntryPersisted snapshot : entries.values()) {
             if (!snapshot.getTarget().equals(target)) {
                 continue;
             }
@@ -226,10 +191,6 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (type == null) {
-            throw new NullPointerException("type cannot be null");
-        }
-
         return entries.values().stream()
                 .filter(s -> s.getType().equals(type) && s.getRelId() == relId)
                 .findFirst()
@@ -242,39 +203,22 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (entry == null) {
-            throw new NullPointerException("entry cannot be null");
-        }
-        if (withdrawnBy == null) {
-            throw new NullPointerException("withdrawnBy cannot be null");
+        while (entry instanceof EntryWrapper) {
+            entry = ((EntryWrapper) entry).entry;
         }
 
-        if (!(entry instanceof EntryWrapper)) {
-            throw new IllegalArgumentException("Invalid Entry: not created by this Core");
-        }
-
-        EntryWrapper wrapper = (EntryWrapper) entry;
-        if (!(wrapper.entry instanceof EntrySnapshot)) {
+        if (!(entry instanceof EntryPersisted)) {
             throw new IllegalArgumentException("Entry is not persisted");
         }
 
-        EntrySnapshot snapshot = (EntrySnapshot) wrapper.entry;
+        EntryPersisted snapshot = (EntryPersisted) entry;
         if (snapshot.isWithdrawn()) {
             throw new IllegalStateException("Entry is already withdrawn");
         }
 
-        EntrySnapshot current = entries.get(snapshot.getId());
-        if (current == null) {
-            throw new EntryNotFoundException("Entry not found: id=" + snapshot.getId());
-        }
-
-        // Update withdrawal info
-        current.setWithdrawnBy(withdrawnBy);
-        current.setWithdrawReason(withdrawReason);
-
         // Refresh the wrapper's underlying snapshot
         snapshot.setWithdrawnBy(withdrawnBy);
-        snapshot.setWithdrawReason(withdrawReason);
+        snapshot.setWithdrawalReason(withdrawReason);
     }
 
     @Override
@@ -283,31 +227,27 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (entry == null) {
-            throw new NullPointerException("entry cannot be null");
-        }
-
         if (!(entry instanceof EntryWrapper)) {
             throw new IllegalArgumentException("Invalid Entry: not created by this Core");
         }
 
         EntryWrapper wrapper = (EntryWrapper) entry;
-        if (!(wrapper.entry instanceof EntrySnapshot)) {
+        if (!(wrapper.entry instanceof EntryPersisted)) {
             throw new IllegalArgumentException("Entry is not persisted");
         }
 
-        EntrySnapshot snapshot = (EntrySnapshot) wrapper.entry;
+        EntryPersisted snapshot = (EntryPersisted) wrapper.entry;
         if (!snapshot.isWithdrawn()) {
             throw new IllegalStateException("Entry is not withdrawn");
         }
 
-        EntrySnapshot current = entries.get(snapshot.getId());
+        EntryPersisted current = entries.get(snapshot.getId());
         if (current == null) {
             throw new EntryNotFoundException("Entry not found: id=" + snapshot.getId());
         }
 
-        current.setWithdrawReason(withdrawReason);
-        snapshot.setWithdrawReason(withdrawReason);
+        current.setWithdrawalReason(withdrawReason);
+        snapshot.setWithdrawalReason(withdrawReason);
     }
 
     @Override
@@ -316,28 +256,21 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (entry == null) {
-            throw new NullPointerException("entry cannot be null");
-        }
-        if (newData == null) {
-            throw new NullPointerException("newData cannot be null");
-        }
-
         if (!(entry instanceof EntryWrapper)) {
             throw new IllegalArgumentException("Invalid Entry: not created by this Core");
         }
 
         EntryWrapper wrapper = (EntryWrapper) entry;
-        if (!(wrapper.entry instanceof EntrySnapshot)) {
+        if (!(wrapper.entry instanceof EntryPersisted)) {
             throw new IllegalArgumentException("Entry is not persisted");
         }
 
-        EntrySnapshot snapshot = (EntrySnapshot) wrapper.entry;
+        EntryPersisted snapshot = (EntryPersisted) wrapper.entry;
         if (snapshot.isWithdrawn()) {
             throw new IllegalStateException("Cannot update data on withdrawn entry");
         }
 
-        EntrySnapshot current = entries.get(snapshot.getId());
+        EntryPersisted current = entries.get(snapshot.getId());
         if (current == null) {
             throw new EntryNotFoundException("Entry not found: id=" + snapshot.getId());
         }
@@ -364,11 +297,7 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        if (type == null) {
-            throw new NullPointerException("type cannot be null");
-        }
-
-        EntrySnapshot toDelete = entries.values().stream()
+        EntryPersisted toDelete = entries.values().stream()
                 .filter(s -> s.getType().equals(type) && s.getRelId() == relId)
                 .findFirst()
                 .orElse(null);
@@ -386,7 +315,7 @@ public class EntryManagerCore implements EntryManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        EntrySnapshot toDelete = entries.get(id);
+        EntryPersisted toDelete = entries.get(id);
         if (toDelete == null) {
             throw new EntryNotFoundException("Entry not found: id=" + id);
         }
@@ -408,60 +337,53 @@ public class EntryManagerCore implements EntryManager {
 
     // Helper methods
 
-    private boolean matchesStateFilter(EntrySnapshot snapshot, QueryOptions options, Date now) {
+    private boolean matchesStateFilter(EntryPersisted snapshot, QueryOptions options, Date now) {
         boolean isExpired = snapshot.getExpiryTime() != null && now.getTime() >= snapshot.getExpiryTime().getTime();
         boolean isWithdrawn = snapshot.isWithdrawn();
         boolean isOverridden = snapshot.isOverridden();
 
         if (isExpired && !options.includeExpired()) return false;
         if (isWithdrawn && !options.includeWithdrawn()) return false;
-        if (isOverridden && !options.includeOverridden()) return false;
-
-        return true;
+        return !isOverridden || options.includeOverridden();
     }
 
-    private boolean matchesTypeFilter(EntrySnapshot snapshot, QueryOptions options) {
+    private boolean matchesTypeFilter(EntryPersisted snapshot, QueryOptions options) {
         Set<String> types = options.getTypes();
         if (types.isEmpty()) return true;
         return types.contains(snapshot.getType());
     }
 
-    private boolean matchesTimeRange(EntrySnapshot snapshot, QueryOptions options) {
+    private boolean matchesTimeRange(EntryPersisted snapshot, QueryOptions options) {
         Date start = options.getStartTime();
         Date end = options.getEndTime();
         Date executingTime = snapshot.getExecutingTime();
 
         if (start != null && executingTime.getTime() < start.getTime()) return false;
-        if (end != null && executingTime.getTime() >= end.getTime()) return false;
-
-        return true;
+        return end == null || executingTime.getTime() < end.getTime();
     }
 
-    private boolean isActive(EntrySnapshot snapshot, Date now) {
+    private boolean isActive(EntryPersisted snapshot, Date now) {
         if (snapshot.isWithdrawn()) return false;
         if (snapshot.isOverridden()) return false;
-        if (snapshot.getExpiryTime() != null && now.getTime() >= snapshot.getExpiryTime().getTime()) {
-            return false;
-        }
-        return true;
+        return snapshot.getExpiryTime() == null || now.getTime() < snapshot.getExpiryTime().getTime();
     }
 
-    private boolean isNewer(EntrySnapshot a, EntrySnapshot b) {
+    private boolean isNewer(EntryPersisted a, EntryPersisted b) {
         int timeComp = a.getExecutingTime().compareTo(b.getExecutingTime());
         if (timeComp != 0) return timeComp > 0;
         return a.getId() > b.getId();
     }
 
-    private Entry createSnapshot(EntrySnapshot snapshot) {
+    private Entry createSnapshot(EntryPersisted snapshot) {
         // Create a defensive copy for query snapshots
-        return new EntrySnapshot(
+        return new EntryPersisted(
                 snapshot.getId(), snapshot.getRelId(), snapshot.getType(),
                 snapshot.getTarget(), snapshot.getExecutor(),
                 snapshot.getExpiryTime() != null ? new Date(snapshot.getExpiryTime().getTime()) : null,
                 new Date(snapshot.getExecutingTime().getTime()),
                 snapshot.getReason(),
-                snapshot.getData() != null ? new JsonObject().getAsJsonObject() : null,
-                snapshot.getWithdrawnBy(), snapshot.getWithdrawReason(),
+                snapshot.getData().deepCopy(),
+                snapshot.getWithdrawnBy(), snapshot.getWithdrawalReason(),
                 snapshot.isOverridden(), snapshot.getOverriddenBy(), snapshot.getVersion()
         );
     }

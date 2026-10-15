@@ -7,6 +7,7 @@ import io.github.floatingpointmc.sanctionmanager.api.management.EntryManager;
 import io.github.floatingpointmc.sanctionmanager.core.factory.EntryFactoryCore;
 import io.github.floatingpointmc.sanctionmanager.core.management.EntryManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.management.TypeManager;
+import io.github.floatingpointmc.sanctionmanager.core.service.EntryService;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
@@ -22,8 +23,13 @@ import java.util.HashMap;
 public class SanctionManagerCore implements SanctionManager {
     private final EntryManager entryManager;
     private final EntryFactory entryFactory;
+    private final EntryService entryService;
     @Getter
     private final TypeManager typeManager;
+    /**
+     *  Checks if the Core is initialized.
+     */
+    @Getter
     private boolean initialized = false;
 
     /**
@@ -31,8 +37,9 @@ public class SanctionManagerCore implements SanctionManager {
      */
     public SanctionManagerCore() {
         this.entryManager = new EntryManagerCore(this);
-        this.entryFactory = new EntryFactoryCore();
-        this.typeManager = new TypeManager(new HashMap<String, Boolean>());
+        this.entryFactory = new EntryFactoryCore(this);
+        this.entryService = new EntryService(this);
+        this.typeManager = new TypeManager(new HashMap<>());
     }
 
     /**
@@ -63,15 +70,6 @@ public class SanctionManagerCore implements SanctionManager {
         SanctionManagerAPI.clearApi();
     }
 
-    /**
-     * Checks if the Core is initialized.
-     *
-     * @return {@code true} if initialized
-     */
-    public boolean isInitialized() {
-        return initialized;
-    }
-
     @Override
     public @NotNull EntryManager getEntryManager() {
         if (!initialized) {
@@ -86,5 +84,12 @@ public class SanctionManagerCore implements SanctionManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
         return entryFactory;
+    }
+
+    public EntryService getEntryService() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
+        }
+        return entryService;
     }
 }

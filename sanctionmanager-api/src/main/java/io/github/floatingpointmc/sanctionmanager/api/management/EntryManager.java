@@ -7,6 +7,7 @@ import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,27 +29,6 @@ import java.util.UUID;
  * </p>
  */
 public interface EntryManager {
-    /**
-     * Executes (persists) a pending entry.
-     * <p>
-     * This method persists the entry to the database and assigns it a unique ID and relation ID.
-     * Upon successful persistence, the entry object transitions to a persisted state. The original
-     * wrapper object continues to be used and its fields become accessible.
-     * </p>
-     * <p>
-     * <strong>Overriding:</strong> If the new entry is not expired, it may override previous Active entries
-     * of compatible types, according to application-specific override rules. Overridden entries are marked
-     * with the permanent {@code OVERRIDDEN} flag. All database changes occur atomically.
-     * </p>
-     *
-     * @param entry the pending Entry to persist. Must have been created via {@link io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory#create(String, UUID, UUID, String, Duration)}.
-     * @throws NullPointerException if {@code entry} is null
-     * @throws IllegalArgumentException if {@code entry} was not created by this Core's EntryFactory or has already been persisted
-     * @throws IllegalStateException if the Core is not initialized or has been shut down
-     * @throws RuntimeException if persistence or transaction operations fail; see specific subclasses for details
-     */
-    void execute(@NotNull Entry entry);
-
     /**
      * Queries entries for a specific target.
      * <p>
@@ -126,6 +106,50 @@ public interface EntryManager {
     @NotNull Optional<Entry> queryByTypeAndRelId(@NotNull String type, long relId);
 
     /**
+     * Executes (persists) a pending entry.
+     * <p>
+     * This method persists the entry to the database and assigns it a unique ID and relation ID.
+     * Upon successful persistence, the entry object transitions to a persisted state. The original
+     * wrapper object continues to be used and its fields become accessible.
+     * </p>
+     * <p>
+     * <strong>Overriding:</strong> If the new entry is not expired, it may override previous Active entries
+     * of compatible types, according to application-specific override rules. Overridden entries are marked
+     * with the permanent {@code OVERRIDDEN} flag. All database changes occur atomically.
+     * </p>
+     *
+     * @param entry the pending Entry to persist. Must have been created via
+     * {@link io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory#create(String, UUID, UUID, String, Duration)}
+     *              or
+     *              {@link io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory#create(String, UUID, UUID, String, Duration, JsonObject)}
+     * @throws NullPointerException if {@code entry} is null
+     * @throws IllegalArgumentException if {@code entry} was not created by this Core's EntryFactory or has already been persisted
+     * @throws IllegalStateException if the Core is not initialized or has been shut down
+     * @throws RuntimeException if persistence or transaction operations fail; see specific subclasses for details
+     */
+    void execute(@NotNull Entry entry);
+
+    /**
+     * Updates the extended data of an entry.
+     * <p>
+     * The provided {@code newData} must be a complete JSON object (not a patch).
+     * Modifications to the returned data use optimistic locking: if another thread modifies the entry
+     * concurrently, a {@code ConcurrentDataModificationException} is thrown and the original Entry remains unchanged.
+     * </p>
+     *
+     * @param entry   the Entry to update. Must be a persisted entry from this Core's queries and must not be withdrawn.
+     * @param newData the new extended data as a JSON object. Cannot be null. {@code {}} clears all extended data.
+     *                Top-level JSON null, arrays, and scalars are rejected.
+     * @throws NullPointerException if {@code entry} or {@code newData} is null
+     * @throws IllegalArgumentException if {@code entry} was not created by this Core or is not persisted, or if {@code newData} is not a valid JSON object
+     * @throws IllegalStateException if the entry is withdrawn, extended data is not enabled for this type,
+     *                                or if the Core is not initialized or has been shut down
+     * @throws EntryNotFoundException if the entry has been physically deleted from the database
+     * @throws RuntimeException if persistence, transaction, or optimistic locking operations fail
+     */
+    void updateData(@NotNull Entry entry, @NotNull JsonObject newData);
+
+    /**
      * Withdraws a persisted entry.
      * <p>
      * Marks the entry as withdrawn by the specified player or system. A withdrawn entry is no longer active
@@ -158,26 +182,6 @@ public interface EntryManager {
      * @throws RuntimeException if persistence or transaction operations fail
      */
     void updateWithdrawReason(@NotNull Entry entry, @Nullable String withdrawReason);
-
-    /**
-     * Updates the extended data of an entry.
-     * <p>
-     * The provided {@code newData} must be a complete JSON object (not a patch).
-     * Modifications to the returned data use optimistic locking: if another thread modifies the entry
-     * concurrently, a {@code ConcurrentDataModificationException} is thrown and the original Entry remains unchanged.
-     * </p>
-     *
-     * @param entry   the Entry to update. Must be a persisted entry from this Core's queries and must not be withdrawn.
-     * @param newData the new extended data as a JSON object. Cannot be null. {@code {}} clears all extended data.
-     *                Top-level JSON null, arrays, and scalars are rejected.
-     * @throws NullPointerException if {@code entry} or {@code newData} is null
-     * @throws IllegalArgumentException if {@code entry} was not created by this Core or is not persisted, or if {@code newData} is not a valid JSON object
-     * @throws IllegalStateException if the entry is withdrawn, extended data is not enabled for this type,
-     *                                or if the Core is not initialized or has been shut down
-     * @throws EntryNotFoundException if the entry has been physically deleted from the database
-     * @throws RuntimeException if persistence, transaction, or optimistic locking operations fail
-     */
-    void updateData(@NotNull Entry entry, @NotNull JsonObject newData);
 
     /**
      * Deletes an entry by type and relation ID.
