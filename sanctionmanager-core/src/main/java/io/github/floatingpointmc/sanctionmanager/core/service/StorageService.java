@@ -2,35 +2,31 @@ package io.github.floatingpointmc.sanctionmanager.core.service;
 
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.StorageConfig;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.BinaryFileService;
 import io.github.floatingpointmc.sanctionmanager.core.service.storage.DatabaseService;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.IStorageService;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-
+@Slf4j
 public class StorageService {
     private final @NotNull SanctionManagerCore core;
-    private final @NotNull StorageConfig config;
-    private final @Nullable File file;
-    private final @Nullable DatabaseService databaseService;
+    private final @NotNull IStorageService storageService;
 
-    public StorageService(@NotNull SanctionManagerCore core, @NotNull StorageConfig config) {
+    public StorageService(@NotNull SanctionManagerCore core) {
         this.core = core;
-        this.config = config;
+        StorageConfig config = core.getConfig().getStorageConfig();
         if (config.isUsingDatabase()) {
-            file = null;
             assert config.getDatabaseConfig() != null;
-            databaseService = new DatabaseService(core, config.getDatabaseConfig());
+            storageService = new DatabaseService(core, config.getDatabaseConfig());
         } else {
-            assert config.getFilePath() != null;
-            file = new File(config.getFilePath());
-            databaseService = null;
+            assert config.getBinaryFileConfig() != null;
+            storageService = new BinaryFileService(core, config.getBinaryFileConfig());
         }
     }
 
     public void initialize() {
-        if (config.isUsingDatabase()) {
-            databaseService.initialize();
-        }
+        log.info("Initializing storage({})", storageService);
+        storageService.initialize();
     }
 }

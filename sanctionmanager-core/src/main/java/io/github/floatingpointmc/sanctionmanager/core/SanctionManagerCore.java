@@ -40,12 +40,11 @@ public class SanctionManagerCore implements SanctionManager {
      * Creates a new SanctionManagerCore instance.
      */
     private SanctionManagerCore(@NotNull CoreConfig config) {
-        this.entryService = new EntryServiceCore(this);
-        this.entryFactory = new EntryFactoryCore(this);
-        this.typeManager = new TypeManager(new HashMap<>());
         this.config = config;
-        StorageConfig storageConfig = config.getStorageConfig();
-        storageService = new StorageService(this, storageConfig);
+        entryService = new EntryServiceCore(this);
+        entryFactory = new EntryFactoryCore(this);
+        typeManager = new TypeManager(new HashMap<>());
+        storageService = new StorageService(this);
     }
 
     /**
@@ -58,11 +57,14 @@ public class SanctionManagerCore implements SanctionManager {
      * @throws IllegalStateException if the Core has already been initialized
      */
     public void initialize() {
-        if (initialized) {
-            throw new IllegalStateException("SanctionManagerCore is already initialized");
+        synchronized (this) {
+            if (initialized) {
+                throw new IllegalStateException("SanctionManagerCore is already initialized");
+            }
+            initialized = true;
+            storageService.initialize();
+            SanctionManagerAPI.setApi(this);
         }
-        initialized = true;
-        SanctionManagerAPI.setApi(this);
     }
 
     /**
@@ -72,8 +74,11 @@ public class SanctionManagerCore implements SanctionManager {
      * </p>
      */
     public void shutdown() {
-        initialized = false;
-        SanctionManagerAPI.clearApi();
+        synchronized (this) {
+//            storageService.shutdown();
+            initialized = false;
+            SanctionManagerAPI.clearApi();
+        }
     }
 
     @Override

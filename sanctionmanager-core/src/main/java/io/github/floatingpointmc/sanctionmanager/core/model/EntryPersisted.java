@@ -45,7 +45,7 @@ public class EntryPersisted implements Entry {
     @Getter(onMethod_ = {@Override})
     @Setter
     private @Nullable Long overriddenBy;
-    @Getter(onMethod_ = {@Override})
+    @Getter
     @Setter
     private int version;
 

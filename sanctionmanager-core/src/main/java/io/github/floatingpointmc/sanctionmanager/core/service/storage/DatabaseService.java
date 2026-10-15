@@ -7,11 +7,17 @@ import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 @RequiredArgsConstructor
-public class DatabaseService {
+public class DatabaseService implements IStorageService {
     private final @NotNull SanctionManagerCore core;
     private final @NotNull DatabaseConfig databaseConfig;
 
+    @Override
     public void initialize() {
         SanctionManagerDataSource dataSource = new SanctionManagerDataSource();
+    }
+
+    @Override
+    public String toString() {
+        return "DatabaseService";
     }
 }

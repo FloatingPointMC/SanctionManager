@@ -25,3 +25,16 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
+subprojects {
+    apply {
+        plugin("java-library")
+    }
+
+    dependencies {
+        compileOnly("org.jetbrains:annotations:26.1.0")
+        annotationProcessor("org.jetbrains:annotations:26.1.0")
+        compileOnly("org.projectlombok:lombok:1.18.48")
+        annotationProcessor("org.projectlombok:lombok:1.18.48")
+    }
+}

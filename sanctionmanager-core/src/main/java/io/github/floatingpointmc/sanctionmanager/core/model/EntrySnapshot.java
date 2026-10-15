@@ -24,7 +24,7 @@ public class EntrySnapshot implements Entry {
     private final @NotNull UUID target;
     @Getter(onMethod_ = {@Override})
     private final @NotNull UUID executor;
-    @Getter(onMethod_ = {@Override})
+    @Getter
     private final @Nullable Duration duration;
     @Getter(onMethod_ = {@Override})
     private final @Nullable String reason;
