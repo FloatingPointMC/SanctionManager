@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.sanctionmanager.api.factory;
 
 import com.google.gson.JsonObject;
+import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -12,7 +13,7 @@ import java.util.UUID;
  * Factory for creating new {@code Entry} instances.
  * <p>
  * Entries created by this factory are managed by the underlying Core implementation
- * and must be persisted via {@link io.github.floatingpointmc.sanctionmanager.api.management.EntryManager#execute(Entry)}.
+ * and must be persisted via {@link EntryService#execute(Entry)}.
  * </p>
  * <p>
  * <strong>Lifecycle:</strong> Newly created entries are in a pending state. Key attributes such as
@@ -25,7 +26,7 @@ public interface EntryFactory {
      * Creates a new entry with optional extended data.
      * <p>
      * The entry is not automatically persisted. To persist, call
-     * {@link io.github.floatingpointmc.sanctionmanager.api.management.EntryManager#execute(Entry)} with the returned entry.
+     * {@link EntryService#execute(Entry)} with the returned entry.
      * </p>
      *
      * @param type      the entry type (e.g., "BAN", "MUTE"). Cannot be null, must be non-empty and registered with the Core.

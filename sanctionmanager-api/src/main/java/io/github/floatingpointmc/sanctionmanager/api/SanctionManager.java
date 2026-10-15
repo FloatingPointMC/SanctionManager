@@ -1,7 +1,8 @@
 package io.github.floatingpointmc.sanctionmanager.api;
 
 import io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory;
-import io.github.floatingpointmc.sanctionmanager.api.management.EntryManager;
+import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -19,22 +20,22 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface SanctionManager {
     /**
-     * Gets the {@code EntryManager} for persisting and querying entries.
+     * Gets the {@code EntryService} for persisting and querying entries.
      * <p>
-     * The returned manager is stable for the duration of the current Core lifecycle.
+     * The returned service is stable for the duration of the current Core lifecycle.
      * After Core shutdown and re-initialization, a new manager instance is obtained via a new
      * {@code SanctionManager} instance.
      * </p>
      *
      * @return the EntryManager, never null
      */
-    @NotNull EntryManager getEntryManager();
+    @NotNull EntryService getEntryService();
 
     /**
      * Gets the {@code EntryFactory} for creating new pending entries.
      * <p>
      * The returned factory is stable for the duration of the current Core lifecycle.
-     * Entries created by this factory must be persisted via {@link EntryManager#execute(Entry)}.
+     * Entries created by this factory must be persisted via {@link EntryService#execute(Entry)}.
      * </p>
      *
      * @return the EntryFactory, never null

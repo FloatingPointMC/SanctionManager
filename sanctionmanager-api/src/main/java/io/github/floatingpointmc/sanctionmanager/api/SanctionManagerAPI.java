@@ -1,5 +1,6 @@
 package io.github.floatingpointmc.sanctionmanager.api;
 
+import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
  * a new {@code SanctionManager} instance is returned.
  * </p>
  */
+@UtilityClass
 public final class SanctionManagerAPI {
     private static SanctionManager instance;
 
@@ -57,9 +59,5 @@ public final class SanctionManagerAPI {
      */
     public static void clearApi() {
         instance = null;
-    }
-
-    private SanctionManagerAPI() {
-        // Utility class, non-instantiable
     }
 }

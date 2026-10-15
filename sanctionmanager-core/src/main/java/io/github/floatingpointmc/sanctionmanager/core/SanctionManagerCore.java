@@ -3,11 +3,13 @@ package io.github.floatingpointmc.sanctionmanager.core;
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManager;
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManagerAPI;
 import io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory;
-import io.github.floatingpointmc.sanctionmanager.api.management.EntryManager;
+import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
+import io.github.floatingpointmc.sanctionmanager.core.config.CoreConfig;
+import io.github.floatingpointmc.sanctionmanager.core.config.storage.StorageConfig;
 import io.github.floatingpointmc.sanctionmanager.core.factory.EntryFactoryCore;
-import io.github.floatingpointmc.sanctionmanager.core.management.EntryManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.management.TypeManager;
-import io.github.floatingpointmc.sanctionmanager.core.service.EntryService;
+import io.github.floatingpointmc.sanctionmanager.core.service.EntryServiceCore;
+import io.github.floatingpointmc.sanctionmanager.core.service.StorageService;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,13 +23,15 @@ import java.util.HashMap;
  * </p>
  */
 public class SanctionManagerCore implements SanctionManager {
-    private final EntryManager entryManager;
-    private final EntryFactory entryFactory;
-    private final EntryService entryService;
+    private final @NotNull EntryService entryService;
+    private final @NotNull EntryFactory entryFactory;
+    private final @NotNull StorageService storageService;
     @Getter
-    private final TypeManager typeManager;
+    private final @NotNull TypeManager typeManager;
+    @Getter
+    private final @NotNull CoreConfig config;
     /**
-     *  Checks if the Core is initialized.
+     * Checks if the Core is initialized.
      */
     @Getter
     private boolean initialized = false;
@@ -35,11 +39,13 @@ public class SanctionManagerCore implements SanctionManager {
     /**
      * Creates a new SanctionManagerCore instance.
      */
-    public SanctionManagerCore() {
-        this.entryManager = new EntryManagerCore(this);
+    private SanctionManagerCore(@NotNull CoreConfig config) {
+        this.entryService = new EntryServiceCore(this);
         this.entryFactory = new EntryFactoryCore(this);
-        this.entryService = new EntryService(this);
         this.typeManager = new TypeManager(new HashMap<>());
+        this.config = config;
+        StorageConfig storageConfig = config.getStorageConfig();
+        storageService = new StorageService(this, storageConfig);
     }
 
     /**
@@ -71,11 +77,11 @@ public class SanctionManagerCore implements SanctionManager {
     }
 
     @Override
-    public @NotNull EntryManager getEntryManager() {
+    public @NotNull EntryService getEntryService() {
         if (!initialized) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
-        return entryManager;
+        return entryService;
     }
 
     @Override
@@ -86,10 +92,10 @@ public class SanctionManagerCore implements SanctionManager {
         return entryFactory;
     }
 
-    public EntryService getEntryService() {
+    public @NotNull StorageService getStorageService() {
         if (!initialized) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
-        return entryService;
+        return storageService;
     }
 }

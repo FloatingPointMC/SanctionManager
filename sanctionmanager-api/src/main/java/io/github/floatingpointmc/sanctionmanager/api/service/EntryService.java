@@ -1,4 +1,4 @@
-package io.github.floatingpointmc.sanctionmanager.api.management;
+package io.github.floatingpointmc.sanctionmanager.api.service;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.persistence.EntryNotFoundException;
@@ -28,7 +28,7 @@ import java.util.UUID;
  * via {@code ConcurrentDataModificationException} (for data conflicts) or other appropriate exceptions.
  * </p>
  */
-public interface EntryManager {
+public interface EntryService {
     /**
      * Queries entries for a specific target.
      * <p>

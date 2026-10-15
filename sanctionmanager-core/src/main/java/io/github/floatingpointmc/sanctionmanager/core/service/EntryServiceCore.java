@@ -1,11 +1,11 @@
-package io.github.floatingpointmc.sanctionmanager.core.management;
+package io.github.floatingpointmc.sanctionmanager.core.service;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.ConcurrentDataModificationException;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.persistence.EntryNotFoundException;
-import io.github.floatingpointmc.sanctionmanager.api.management.EntryManager;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
+import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * </p>
  */
 @RequiredArgsConstructor
-public class EntryManagerCore implements EntryManager {
+public class EntryServiceCore implements EntryService {
     private final SanctionManagerCore core;
     private final Map<Long, EntryPersisted> entries = new ConcurrentHashMap<>();
     private final Map<String, AtomicLong> typeRelIdCounters = new ConcurrentHashMap<>();

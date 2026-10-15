@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.sanctionmanager.api.model;
 
 import com.google.gson.JsonObject;
+import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,7 +32,7 @@ public interface Entry {
     /**
      * Gets the unique ID assigned by the persistence layer.
      * <p>
-     * For pending entries (before {@link io.github.floatingpointmc.sanctionmanager.api.management.EntryManager#execute(Entry)}),
+     * For pending entries (before {@link EntryService#execute(Entry)}),
      * this method throws {@code IllegalStateException}.
      * </p>
      *
@@ -43,7 +44,7 @@ public interface Entry {
     /**
      * Gets the relation ID, assigned by the persistence layer and unique per entry type.
      * <p>
-     * For pending entries (before {@link io.github.floatingpointmc.sanctionmanager.api.management.EntryManager#execute(Entry)}),
+     * For pending entries (before {@link EntryService#execute(Entry)}),
      * this method throws {@code IllegalStateException}.
      * </p>
      *
@@ -108,7 +109,7 @@ public interface Entry {
     /**
      * Gets the timestamp when this entry was persisted.
      * <p>
-     * For pending entries (before {@link io.github.floatingpointmc.sanctionmanager.api.management.EntryManager#execute(Entry)}),
+     * For pending entries (before {@link EntryService#execute(Entry)}),
      * this method throws {@code IllegalStateException}.
      * </p>
      *
