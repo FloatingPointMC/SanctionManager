@@ -1,5 +1,6 @@
 mode: standalone # standalone or bridge
 
+register-commands: true # valid only if under bridge mode, false to disable commands
 storage:
   database:
     enabled: true

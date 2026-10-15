@@ -6,30 +6,28 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TranslationFormatter {
-    public static boolean isTemporary(@NotNull TranslationContext.Punishment context) {
-        return context.getExpiryTime() != null;
+    public static boolean isTemporary(@NotNull TranslationContext.EntryMessage context) {
+        return context.getEntry().getExpiryTime() != null;
     }
 
     public static @NotNull String replaceVariables(@NotNull String line,
-                                                   @NotNull TranslationContext.Punishment context) {
+                                                   @NotNull TranslationContext.EntryMessage context) {
         String result = line;
-        result = result.replace("%id%", String.valueOf(context.getId()));
-        result = result.replace("%rel_id%", String.valueOf(context.getRelId()));
-        result = result.replace("%reason%", context.getReason() != null ? context.getReason() : "");
-        result = result.replace("%name%", context.getTargetName() != null ? context.getTargetName() : context.getTarget().toString());
-        result = result.replace("%uuid%", context.getTarget().toString());
+        result = result.replace("%id%", String.valueOf(context.getEntry().getId()));
+        result = result.replace("%reason%", context.getEntry().getReason() != null ? context.getEntry().getReason() : "");
+        result = result.replace("%name%", context.getTargetName() != null ? context.getTargetName() : context.getEntry().getTarget().toString());
+        result = result.replace("%uuid%", context.getEntry().getTarget().toString());
         result = result.replace("%operator%", context.getOperatorName() != null ? context.getOperatorName() : "[Console]");
         result = result.replace("%plugin%", context.getPluginName());
         result = result.replace("%version%", context.getPluginVersion());
-        if (context.getExpiryTime() != null) {
-            result = result.replace("%time%", context.getExpiryTime().toString());
-            Duration duration = Duration.between(LocalDateTime.now(), context.getExpiryTime());
+        if (context.getEntry().getExpiryTime() != null) {
+            result = result.replace("%time%", java.time.LocalDateTime.ofInstant(context.getEntry().getExpiryTime().toInstant(), java.time.ZoneId.systemDefault()).toString());
+            Duration duration = Duration.between(java.time.Instant.now(), context.getEntry().getExpiryTime().toInstant());
             result = result.replace("%duration%", formatDuration(duration));
         } else {
             result = result.replace("%time%", "permanent");
@@ -47,7 +45,7 @@ public final class TranslationFormatter {
     }
 
     public static @NotNull String format(@NotNull List<String> lines,
-                                         @NotNull TranslationContext.Punishment context) {
+                                         @NotNull TranslationContext.EntryMessage context) {
         StringBuilder sb = new StringBuilder();
         for (String line : lines) {
             if (sb.length() > 0) sb.append("\n");
@@ -57,7 +55,7 @@ public final class TranslationFormatter {
     }
 
     public static @NotNull List<String> formatLines(@NotNull List<String> lines,
-                                                    @NotNull TranslationContext.Punishment context) {
+                                                    @NotNull TranslationContext.EntryMessage context) {
         List<String> result = new ArrayList<>(lines.size());
         for (String line : lines) {
             result.add(replaceVariables(line, context));

@@ -270,7 +270,7 @@ Instead of building a generic table layer that isn't needed yet, I:
 - Implemented `MuteCommand` with offline player support
 - Implemented `UnmuteCommand` with offline player support
 - Implemented `UnbanCommand` with offline player support
-- Updated `BanCommand` with offline player support
+- Updated `BridgeBanCommand` with offline player support
 - All commands work seamlessly whether player is online or offline
 
 ### Documentation ✅

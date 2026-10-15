@@ -5,7 +5,6 @@ import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationFor
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,57 +14,33 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MinecraftModuleTest {
 
-    @Test
-    void testMessageFormatterReplaceVariables() {
-        TranslationContext.Punishment context = TranslationContext.Punishment.builder()
-                .id(42)
-                .relId(7)
-                .target(UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .targetName("TestPlayer")
-                .executor(UUID.fromString("00000000-0000-0000-0000-000000000002"))
-                .operatorName("Admin")
-                .executingTime(LocalDateTime.now())
-                .reason("Hacking")
-                .pluginName("SanctionManager")
-                .pluginVersion("1.0")
-                .build();
-
-        String result = TranslationFormatter.replaceVariables(
-                "Player %name% banned for %reason% by %operator%", context);
-        assertEquals("Player TestPlayer banned for Hacking by Admin", result);
+    private TranslationContext.EntryMessage message(long id, java.util.Date expiry, String targetName, String operator) {
+        io.github.floatingpointmc.sanctionmanager.api.model.EntrySnapshot entry =
+                new io.github.floatingpointmc.sanctionmanager.api.model.EntrySnapshot(id, MinecraftEntryTypes.BAN,
+                        UUID.fromString("00000000-0000-0000-0000-000000000001"), null,
+                        new java.util.Date(1000), expiry, "Hacking", false, null, null, 0, new com.google.gson.JsonObject());
+        return new TranslationContext("SanctionManager", "1.0").forEntry(entry, targetName, operator);
     }
 
     @Test
-    void testMessageFormatterRelIdPlaceholder() {
-        TranslationContext.Punishment context = TranslationContext.Punishment.builder()
-                .id(42)
-                .relId(7)
-                .target(UUID.randomUUID())
-                .executor(UUID.randomUUID())
-                .executingTime(LocalDateTime.now())
-                .reason("Test")
-                .pluginName("SanctionManager")
-                .pluginVersion("1.0")
-                .build();
-
-        String result = TranslationFormatter.replaceVariables("Ban record #%rel_id% (punishment #%id%)", context);
-        assertEquals("Ban record #7 (punishment #42)", result);
+    void testMessageFormatterReadsEntrySnapshot() {
+        TranslationContext.EntryMessage context = message(42, null, "TestPlayer", "Admin");
+        assertEquals("Player TestPlayer banned for Hacking by Admin", TranslationFormatter.replaceVariables(
+                "Player %name% banned for %reason% by %operator%", context));
+        assertEquals("Entry #42", TranslationFormatter.replaceVariables("Entry #%id%", context));
     }
 
     @Test
-    void testMessageFormatterIdAndRelIdDistinct() {
-        TranslationContext.Punishment context = TranslationContext.Punishment.builder()
-                .id(100)
-                .relId(50)
-                .target(UUID.randomUUID())
-                .executor(UUID.randomUUID())
-                .executingTime(LocalDateTime.now())
-                .pluginName("SM")
-                .pluginVersion("2.0")
-                .build();
+    void testMessageFormatterPreservesLongEntryId() {
+        TranslationContext.EntryMessage context = message(4294967296L, null, "TestPlayer", null);
+        assertEquals("4294967296", TranslationFormatter.replaceVariables("%id%", context));
+    }
 
-        String result = TranslationFormatter.replaceVariables("%id%/%rel_id%", context);
-        assertEquals("100/50", result);
+    @Test
+    void testMessageFormatterUsesSnapshotWhenNamesAreUnavailable() {
+        TranslationContext.EntryMessage context = message(1, null, null, null);
+        assertEquals("00000000-0000-0000-0000-000000000001 [Console] permanent", TranslationFormatter.replaceVariables(
+                "%name% %operator% %duration%", context));
     }
 
     @Test
@@ -85,24 +60,8 @@ public class MinecraftModuleTest {
 
     @Test
     void testMessageFormatterIsTemporary() {
-        TranslationContext.Punishment permanent = TranslationContext.Punishment.builder()
-                .id(1)
-                .relId(1)
-                .target(UUID.randomUUID())
-                .executor(UUID.randomUUID())
-                .executingTime(LocalDateTime.now())
-                .build();
-        assertFalse(TranslationFormatter.isTemporary(permanent));
-
-        TranslationContext.Punishment temporary = TranslationContext.Punishment.builder()
-                .id(2)
-                .relId(2)
-                .target(UUID.randomUUID())
-                .executor(UUID.randomUUID())
-                .executingTime(LocalDateTime.now())
-                .expiryTime(LocalDateTime.now().plusDays(7))
-                .build();
-        assertTrue(TranslationFormatter.isTemporary(temporary));
+        assertFalse(TranslationFormatter.isTemporary(message(1, null, "Player", null)));
+        assertTrue(TranslationFormatter.isTemporary(message(2, new java.util.Date(2000), "Player", null)));
     }
 
     @Test

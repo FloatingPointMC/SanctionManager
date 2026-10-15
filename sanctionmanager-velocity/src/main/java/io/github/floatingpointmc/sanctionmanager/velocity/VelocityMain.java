@@ -7,7 +7,6 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-import io.github.floatingpointmc.sanctionmanager.api.SanctionManagerAPI;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionPlayer;
@@ -124,7 +123,7 @@ public class VelocityMain {
             new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(true);
 
             proxy.getEventManager().register(this, new PlayerListener(
-                    manager, SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate));
+                    manager, translationConfig, contextTemplate));
 
             logger.info("SanctionManager is running in standalone mode.");
         } else {

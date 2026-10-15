@@ -1,6 +1,5 @@
 package io.github.floatingpointmc.sanctionmanager.spigot;
 
-import io.github.floatingpointmc.sanctionmanager.api.SanctionManagerAPI;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftProvider;
 import io.github.floatingpointmc.sanctionmanager.minecraft.MinecraftSanctionManager;
 import io.github.floatingpointmc.sanctionmanager.minecraft.SanctionPlayer;
@@ -8,7 +7,6 @@ import io.github.floatingpointmc.sanctionmanager.minecraft.command.SanctionComma
 import io.github.floatingpointmc.sanctionmanager.minecraft.command.SanctionCommandSender;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationContext;
 import io.github.floatingpointmc.sanctionmanager.minecraft.config.TranslationConfig;
-import io.github.floatingpointmc.sanctionmanager.spigot.bridge.SanctionManagerBridge;
 import io.github.floatingpointmc.sanctionmanager.spigot.command.SpigotCommandSender;
 import io.github.floatingpointmc.sanctionmanager.spigot.command.SpigotSanctionPlayer;
 import io.github.floatingpointmc.sanctionmanager.spigot.listener.PlayerListener;
@@ -103,12 +101,11 @@ public class SpigotMain extends JavaPlugin {
             new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(true);
 
             getServer().getPluginManager().registerEvents(
-                    new PlayerListener(manager, SanctionManagerAPI.getAPI().getPunishManager(), translationConfig, contextTemplate), this);
+                    new PlayerListener(manager, translationConfig, contextTemplate), this);
             getLogger().info("SanctionManager is running in standalone mode.");
         } else {
             new SanctionCommandManager(commandManager, manager, translationConfig, contextTemplate).buildCommands(false);
             getLogger().warning("SanctionManager is running under bridge mode, no features available.");
-            SanctionManagerAPI.register(new SanctionManagerBridge());
         }
     }
 

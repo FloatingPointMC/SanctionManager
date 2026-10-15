@@ -2,112 +2,94 @@ package io.github.floatingpointmc.sanctionmanager.core;
 
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManager;
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.management.PunishmentManagerAPI;
-import io.github.floatingpointmc.sanctionmanager.api.punishment.PunishmentFactory;
-import io.github.floatingpointmc.sanctionmanager.core.cache.LocalPunishmentCache;
-import io.github.floatingpointmc.sanctionmanager.core.cache.PunishmentCache;
-import io.github.floatingpointmc.sanctionmanager.core.cache.PunishmentSerializer;
-import io.github.floatingpointmc.sanctionmanager.core.cache.RedisPunishmentCache;
-import io.github.floatingpointmc.sanctionmanager.core.config.StorageConfig;
-import io.github.floatingpointmc.sanctionmanager.core.factory.PunishmentFactoryCore;
-import io.github.floatingpointmc.sanctionmanager.core.management.PunishmentManager;
-import io.github.floatingpointmc.sanctionmanager.core.repository.BinaryPunishmentRepository;
-import io.github.floatingpointmc.sanctionmanager.core.repository.HikariPunishmentRepository;
-import io.github.floatingpointmc.sanctionmanager.core.repository.PunishmentRepository;
-import io.github.floatingpointmc.sanctionmanager.core.service.PunishmentService;
-import io.github.vlouboos.standaloneevent.api.ApiProvider;
+import io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory;
+import io.github.floatingpointmc.sanctionmanager.api.management.EntryManager;
+import io.github.floatingpointmc.sanctionmanager.core.factory.EntryFactoryCore;
+import io.github.floatingpointmc.sanctionmanager.core.management.EntryManagerCore;
+import io.github.floatingpointmc.sanctionmanager.core.management.TypeManager;
+import io.github.floatingpointmc.sanctionmanager.core.service.EntryService;
+import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import redis.clients.jedis.RedisClient;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.HashMap;
 
+/**
+ * Core implementation of SanctionManager.
+ * <p>
+ * This class manages the lifecycle of the sanction management system and provides access
+ * to entry factory and manager services.
+ * </p>
+ */
 public class SanctionManagerCore implements SanctionManager {
-    private final @NotNull PunishmentManager punishmentManager;
-    private final @NotNull PunishmentFactory punishmentFactory;
-    private final @NotNull PunishmentRepository repository;
-    private final @NotNull PunishmentCache cache;
-    private final @Nullable RedisClient redisClient;
+    private final EntryManager entryManager;
+    private final EntryFactory entryFactory;
+    private final EntryService entryService;
+    @Getter
+    private final TypeManager typeManager;
+    /**
+     *  Checks if the Core is initialized.
+     */
+    @Getter
+    private boolean initialized = false;
 
-    public SanctionManagerCore(@NotNull StorageConfig storageConfig) {
-        ApiProvider.injectApi(false);
+    /**
+     * Creates a new SanctionManagerCore instance.
+     */
+    public SanctionManagerCore() {
+        this.entryManager = new EntryManagerCore(this);
+        this.entryFactory = new EntryFactoryCore(this);
+        this.entryService = new EntryService(this);
+        this.typeManager = new TypeManager(new HashMap<>());
+    }
 
-        if (storageConfig.isDatabaseEnabled()) {
-            assert storageConfig.getDatabaseConfig() != null;
-            repository = new HikariPunishmentRepository(storageConfig.getDatabaseConfig());
-        } else {
-            assert storageConfig.getBinaryDataDir() != null;
-            Path dataDir = Paths.get(storageConfig.getBinaryDataDir());
-            repository = new BinaryPunishmentRepository(dataDir);
+    /**
+     * Initializes the Core and registers it as the active API instance.
+     * <p>
+     * This method must be called before using any services. It registers this Core
+     * with the global {@code SanctionManagerAPI}.
+     * </p>
+     *
+     * @throws IllegalStateException if the Core has already been initialized
+     */
+    public void initialize() {
+        if (initialized) {
+            throw new IllegalStateException("SanctionManagerCore is already initialized");
         }
-
-        if (storageConfig.isRedisEnabled()) {
-            assert storageConfig.getRedisConfig() != null;
-            redisClient = RedisClient.create(
-                    "redis://" +
-                    (storageConfig.getRedisConfig().getPassword().isEmpty() ? "" :
-                            ":" + storageConfig.getRedisConfig().getPassword() + "@") +
-                    storageConfig.getRedisConfig().getHost() + ":" +
-                    storageConfig.getRedisConfig().getPort());
-            cache = new RedisPunishmentCache(redisClient, new PunishmentSerializer());
-        } else {
-            redisClient = null;
-            cache = new LocalPunishmentCache();
-        }
-
-        PunishmentService service = new PunishmentService(cache, repository);
-        punishmentManager = new PunishmentManager(service);
-        punishmentFactory = new PunishmentFactoryCore();
-        SanctionManagerAPI.register(this);
+        initialized = true;
+        SanctionManagerAPI.setApi(this);
     }
 
-    public SanctionManagerCore(@NotNull PunishmentCache cache, @NotNull PunishmentRepository repository) {
-        ApiProvider.injectApi(false);
-        this.cache = cache;
-        this.repository = repository;
-        redisClient = null;
-        PunishmentService service = new PunishmentService(cache, repository);
-        punishmentManager = new PunishmentManager(service);
-        punishmentFactory = new PunishmentFactoryCore();
-        SanctionManagerAPI.register(this);
-    }
-
-    @Override
-    public @NotNull PunishmentManagerAPI getPunishManager() {
-        return punishmentManager;
-    }
-
-    @Override
-    public @NotNull PunishmentFactory getPunishmentFactory() {
-        return punishmentFactory;
-    }
-
-    public @NotNull PunishmentRepository getRepository() {
-        return repository;
-    }
-
-    public @NotNull PunishmentCache getCache() {
-        return cache;
-    }
-
-    public boolean isRedisEnabled() {
-        return redisClient != null;
-    }
-
-    public boolean isDatabaseEnabled() {
-        return repository instanceof HikariPunishmentRepository;
-    }
-
+    /**
+     * Shuts down the Core and clears the active API instance.
+     * <p>
+     * After shutdown, all services will throw {@code IllegalStateException}.
+     * </p>
+     */
     public void shutdown() {
-        if (repository instanceof AutoCloseable) {
-            try {
-                ((AutoCloseable) repository).close();
-            } catch (Exception ignored) {
-            }
+        initialized = false;
+        SanctionManagerAPI.clearApi();
+    }
+
+    @Override
+    public @NotNull EntryManager getEntryManager() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
-        if (redisClient != null) {
-            redisClient.close();
+        return entryManager;
+    }
+
+    @Override
+    public @NotNull EntryFactory getEntryFactory() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
+        return entryFactory;
+    }
+
+    public EntryService getEntryService() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
+        }
+        return entryService;
     }
 }
