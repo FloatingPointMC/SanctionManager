@@ -3,6 +3,7 @@ package io.github.floatingpointmc.sanctionmanager.core.factory;
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryWrapper;
@@ -39,7 +40,8 @@ public class EntryFactoryCore implements EntryFactory {
         if (!core.getTypeManager().contains(type)) {
             throw new IllegalArgumentException(String.format("type is not registered(type=%s)", type));
         }
-        boolean requireExtraData = core.getTypeManager().requireExtraData(type);
+        EntryType entryType = core.getTypeManager().getType(type);
+        boolean requireExtraData = entryType.withExtraData();
         if (requireExtraData == (data == null)) {
             throw new IllegalArgumentException(String.format("extra data is not compatible(type=%s, requireExtraData=%s, data=%s)", type, requireExtraData, data));
         }
@@ -47,6 +49,6 @@ public class EntryFactoryCore implements EntryFactory {
             throw new IllegalArgumentException("duration cannot be negative");
         }
 
-        return new EntryWrapper(new EntrySnapshot(type, target, executor, duration, reason, data));
+        return new EntryWrapper(new EntrySnapshot(entryType, target, executor, duration, reason, data));
     }
 }

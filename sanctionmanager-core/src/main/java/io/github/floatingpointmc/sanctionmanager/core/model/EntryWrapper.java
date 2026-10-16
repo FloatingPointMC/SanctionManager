@@ -2,6 +2,7 @@ package io.github.floatingpointmc.sanctionmanager.core.model;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,7 +32,7 @@ public class EntryWrapper implements Entry {
     }
 
     @Override
-    public @NotNull String getType() {
+    public @NotNull EntryType getType() {
         return entry.getType();
     }
 

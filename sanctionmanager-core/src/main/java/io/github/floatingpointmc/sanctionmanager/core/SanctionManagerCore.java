@@ -3,17 +3,18 @@ package io.github.floatingpointmc.sanctionmanager.core;
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManager;
 import io.github.floatingpointmc.sanctionmanager.api.SanctionManagerAPI;
 import io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import io.github.floatingpointmc.sanctionmanager.core.config.CoreConfig;
-import io.github.floatingpointmc.sanctionmanager.core.config.storage.StorageConfig;
 import io.github.floatingpointmc.sanctionmanager.core.factory.EntryFactoryCore;
 import io.github.floatingpointmc.sanctionmanager.core.management.TypeManager;
 import io.github.floatingpointmc.sanctionmanager.core.service.EntryServiceCore;
 import io.github.floatingpointmc.sanctionmanager.core.service.StorageService;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
+import java.util.*;
 
 /**
  * Core implementation of SanctionManager.
@@ -26,10 +27,11 @@ public class SanctionManagerCore implements SanctionManager {
     private final @NotNull EntryService entryService;
     private final @NotNull EntryFactory entryFactory;
     private final @NotNull StorageService storageService;
-    @Getter
-    private final @NotNull TypeManager typeManager;
+    private @Nullable TypeManager typeManager;
     @Getter
     private final @NotNull CoreConfig config;
+
+    private final ArrayList<EntryType> entryTypes = new ArrayList<>();
     /**
      * Checks if the Core is initialized.
      */
@@ -43,8 +45,20 @@ public class SanctionManagerCore implements SanctionManager {
         this.config = config;
         entryService = new EntryServiceCore(this);
         entryFactory = new EntryFactoryCore(this);
-        typeManager = new TypeManager(new HashMap<>());
         storageService = new StorageService(this);
+    }
+
+    public SanctionManagerCore types(EntryType @NotNull ... types) {
+        validateTypes(types, Collections.emptyList());
+        entryTypes.clear();
+        entryTypes.addAll(Arrays.asList(types));
+        return this;
+    }
+
+    public SanctionManagerCore addTypes(EntryType @NotNull ... types) {
+        validateTypes(types, Collections.emptyList());
+        entryTypes.addAll(Arrays.asList(types));
+        return this;
     }
 
     /**
@@ -61,8 +75,9 @@ public class SanctionManagerCore implements SanctionManager {
             if (initialized) {
                 throw new IllegalStateException("SanctionManagerCore is already initialized");
             }
-            initialized = true;
             storageService.initialize();
+            typeManager = new TypeManager(entryTypes);
+            initialized = true;
             SanctionManagerAPI.setApi(this);
         }
     }
@@ -102,5 +117,32 @@ public class SanctionManagerCore implements SanctionManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
         return storageService;
+    }
+
+    public @NotNull TypeManager getTypeManager() {
+        if (typeManager == null) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
+        }
+        return typeManager;
+    }
+
+    private void validateTypes(
+            final EntryType @NotNull [] types,
+            final Collection<EntryType> existing
+    ) {
+        if (initialized) {
+            throw new IllegalStateException("SanctionManagerCore is already initialized");
+        }
+        final HashSet<EntryType> seen = new HashSet<>(existing);
+
+        for (final EntryType type : types) {
+            Objects.requireNonNull(type, "Entry type cannot be null");
+
+            if (!seen.add(type)) {
+                throw new IllegalArgumentException(
+                        "Duplicate entry type: " + type.getIdentifier()
+                );
+            }
+        }
     }
 }

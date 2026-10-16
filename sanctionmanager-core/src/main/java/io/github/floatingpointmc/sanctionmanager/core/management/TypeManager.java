@@ -1,8 +1,10 @@
 package io.github.floatingpointmc.sanctionmanager.core.management;
 
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
+import java.util.*;
 
 /**
  * Manages registered sanction entry types.
@@ -12,13 +14,19 @@ import java.util.Map;
  */
 @RequiredArgsConstructor
 public class TypeManager {
-    private final Map<String, Boolean> types;
+    private final Map<String, EntryType> types;
 
-    public boolean contains(String type) {
+    public TypeManager(@NotNull List<EntryType> types) {
+        HashMap<String, EntryType> typeMap = new HashMap<>();
+        types.forEach(type -> typeMap.put(type.getIdentifier(), type));
+        this.types = Collections.unmodifiableMap(typeMap);
+    }
+
+    public boolean contains(@NotNull String type) {
         return types.containsKey(type);
     }
 
-    public boolean requireExtraData(String type) {
+    public @NotNull EntryType getType(@NotNull String type) {
         return types.get(type);
     }
 }

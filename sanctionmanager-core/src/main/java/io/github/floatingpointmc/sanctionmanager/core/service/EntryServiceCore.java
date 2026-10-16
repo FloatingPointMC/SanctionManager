@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.ConcurrentDataModificationException;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.persistence.EntryNotFoundException;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
@@ -51,9 +52,9 @@ public class EntryServiceCore implements EntryService {
 
         // Generate IDs
         long id = idCounter.incrementAndGet();
-        String type = tempSnapshot.getType();
+        EntryType type = tempSnapshot.getType();
         long relId = typeRelIdCounters
-                .computeIfAbsent(type, k -> new AtomicLong(0))
+                .computeIfAbsent(type.getIdentifier(), k -> new AtomicLong(0))
                 .incrementAndGet();
 
         // Calculate times
@@ -123,7 +124,7 @@ public class EntryServiceCore implements EntryService {
         Date now = new Date();
 
         for (EntryPersisted snapshot : entries.values()) {
-            if (!typeSet.isEmpty() && !typeSet.contains(snapshot.getType())) {
+            if (!typeSet.isEmpty() && !typeSet.contains(snapshot.getType().getIdentifier())) {
                 continue;
             }
 
@@ -161,7 +162,7 @@ public class EntryServiceCore implements EntryService {
             if (!snapshot.getTarget().equals(target)) {
                 continue;
             }
-            if (!typeSet.contains(snapshot.getType())) {
+            if (!typeSet.contains(snapshot.getType().getIdentifier())) {
                 continue;
             }
             if (!isActive(snapshot, now)) {
@@ -192,7 +193,7 @@ public class EntryServiceCore implements EntryService {
         }
 
         return entries.values().stream()
-                .filter(s -> s.getType().equals(type) && s.getRelId() == relId)
+                .filter(s -> s.getType().getIdentifier().equals(type) && s.getRelId() == relId)
                 .findFirst()
                 .map(this::createSnapshot);
     }
@@ -298,7 +299,7 @@ public class EntryServiceCore implements EntryService {
         }
 
         EntryPersisted toDelete = entries.values().stream()
-                .filter(s -> s.getType().equals(type) && s.getRelId() == relId)
+                .filter(s -> s.getType().getIdentifier().equals(type) && s.getRelId() == relId)
                 .findFirst()
                 .orElse(null);
 
@@ -350,7 +351,7 @@ public class EntryServiceCore implements EntryService {
     private boolean matchesTypeFilter(EntryPersisted snapshot, QueryOptions options) {
         Set<String> types = options.getTypes();
         if (types.isEmpty()) return true;
-        return types.contains(snapshot.getType());
+        return types.contains(snapshot.getType().getIdentifier());
     }
 
     private boolean matchesTimeRange(EntryPersisted snapshot, QueryOptions options) {

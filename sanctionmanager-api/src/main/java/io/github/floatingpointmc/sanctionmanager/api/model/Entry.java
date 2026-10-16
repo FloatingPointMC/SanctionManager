@@ -62,7 +62,7 @@ public interface Entry {
      *
      * @return the type name, never null
      */
-    @NotNull String getType();
+    @NotNull EntryType getType();
 
     /**
      * Gets the UUID of the player or entity being sanctioned.

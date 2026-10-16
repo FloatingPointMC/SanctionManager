@@ -2,6 +2,7 @@ package io.github.floatingpointmc.sanctionmanager.core.model;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -19,7 +20,7 @@ import java.util.UUID;
  */
 public class EntrySnapshot implements Entry {
     @Getter(onMethod_ = {@Override})
-    private final @NotNull String type;
+    private final @NotNull EntryType type;
     @Getter(onMethod_ = {@Override})
     private final @NotNull UUID target;
     @Getter(onMethod_ = {@Override})
@@ -30,7 +31,7 @@ public class EntrySnapshot implements Entry {
     private final @Nullable String reason;
     private final @Nullable JsonObject data;
 
-    public EntrySnapshot(@NotNull String type, @NotNull UUID target, @NotNull UUID executor,
+    public EntrySnapshot(@NotNull EntryType type, @NotNull UUID target, @NotNull UUID executor,
                          @Nullable Duration duration, @Nullable String reason, @Nullable JsonObject data) {
         this.type = type;
         this.target = target;

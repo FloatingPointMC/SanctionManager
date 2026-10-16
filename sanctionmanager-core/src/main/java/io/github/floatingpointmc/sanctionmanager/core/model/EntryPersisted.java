@@ -2,6 +2,7 @@ package io.github.floatingpointmc.sanctionmanager.core.model;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +22,7 @@ public class EntryPersisted implements Entry {
     @Getter(onMethod_ = {@Override})
     private final long id, relId;
     @Getter(onMethod_ = {@Override})
-    private final @NotNull String type;
+    private final @NotNull EntryType type;
     @Getter(onMethod_ = {@Override})
     private final @NotNull UUID target;
     @Getter(onMethod_ = {@Override})
@@ -49,7 +50,7 @@ public class EntryPersisted implements Entry {
     @Setter
     private int version;
 
-    public EntryPersisted(long id, long relId, @NotNull String type, @NotNull UUID target, @NotNull UUID executor,
+    public EntryPersisted(long id, long relId, @NotNull EntryType type, @NotNull UUID target, @NotNull UUID executor,
                           @Nullable Date expiryTime, @NotNull Date executingTime, @Nullable String reason,
                           @Nullable JsonObject data, @Nullable UUID withdrawnBy, @Nullable String withdrawReason,
                           boolean overridden, @Nullable Long overriddenBy, int version) {
