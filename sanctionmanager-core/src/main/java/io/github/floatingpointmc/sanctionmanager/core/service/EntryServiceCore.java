@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicLong;
 @RequiredArgsConstructor
 public class EntryServiceCore implements EntryService {
     private final SanctionManagerCore core;
-    private final Map<Long, EntryPersisted> entries = new ConcurrentHashMap<>();
     private final Map<String, AtomicLong> typeRelIdCounters = new ConcurrentHashMap<>();
     private final AtomicLong idCounter = new AtomicLong(0);
 
@@ -73,8 +72,7 @@ public class EntryServiceCore implements EntryService {
                 null, null, false, null, 0
         );
 
-        // Store in repository
-        entries.put(id, snapshot);
+        // todo: Store in repository
 
         // Transition wrapper to persisted state
         wrapper.entry = snapshot;
@@ -88,25 +86,7 @@ public class EntryServiceCore implements EntryService {
         List<Entry> result = new ArrayList<>();
         Date now = new Date();
 
-        for (EntryPersisted snapshot : entries.values()) {
-            if (!snapshot.getTarget().equals(target)) {
-                continue;
-            }
-
-            if (!matchesStateFilter(snapshot, options, now)) {
-                continue;
-            }
-
-            if (!matchesTypeFilter(snapshot, options)) {
-                continue;
-            }
-
-            if (!matchesTimeRange(snapshot, options)) {
-                continue;
-            }
-
-            result.add(createSnapshot(snapshot));
-        }
+        // todo: query from cache if enabled, then the persistence
 
         result.sort(Comparator.comparing(Entry::getExecutingTime).thenComparingLong(Entry::getId));
 
@@ -123,21 +103,7 @@ public class EntryServiceCore implements EntryService {
         List<Entry> result = new ArrayList<>();
         Date now = new Date();
 
-        for (EntryPersisted snapshot : entries.values()) {
-            if (!typeSet.isEmpty() && !typeSet.contains(snapshot.getType().getIdentifier())) {
-                continue;
-            }
-
-            if (!matchesStateFilter(snapshot, options, now)) {
-                continue;
-            }
-
-            if (!matchesTimeRange(snapshot, options)) {
-                continue;
-            }
-
-            result.add(createSnapshot(snapshot));
-        }
+        // todo: query from cache if enabled, then the persistence
 
         result.sort(Comparator.comparing(Entry::getExecutingTime).thenComparingLong(Entry::getId));
 
@@ -158,21 +124,8 @@ public class EntryServiceCore implements EntryService {
         Date now = new Date();
         EntryPersisted latest = null;
 
-        for (EntryPersisted snapshot : entries.values()) {
-            if (!snapshot.getTarget().equals(target)) {
-                continue;
-            }
-            if (!typeSet.contains(snapshot.getType().getIdentifier())) {
-                continue;
-            }
-            if (!isActive(snapshot, now)) {
-                continue;
-            }
+        // todo: query from cache if enabled, then the persistence
 
-            if (latest == null || isNewer(snapshot, latest)) {
-                latest = snapshot;
-            }
-        }
 
         return Optional.ofNullable(latest).map(this::createSnapshot);
     }
@@ -183,7 +136,9 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        return Optional.ofNullable(entries.get(id)).map(this::createSnapshot);
+
+        // todo: query from cache if enabled, then the persistence
+        return Optional.empty();
     }
 
     @Override
@@ -192,10 +147,8 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        return entries.values().stream()
-                .filter(s -> s.getType().getIdentifier().equals(type) && s.getRelId() == relId)
-                .findFirst()
-                .map(this::createSnapshot);
+        // todo: query from cache if enabled, then the persistence
+        return Optional.empty();
     }
 
     @Override
@@ -212,14 +165,7 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalArgumentException("Entry is not persisted");
         }
 
-        EntryPersisted snapshot = (EntryPersisted) entry;
-        if (snapshot.isWithdrawn()) {
-            throw new IllegalStateException("Entry is already withdrawn");
-        }
-
-        // Refresh the wrapper's underlying snapshot
-        snapshot.setWithdrawnBy(withdrawnBy);
-        snapshot.setWithdrawalReason(withdrawReason);
+        // todo: write changes
     }
 
     @Override
@@ -242,13 +188,7 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("Entry is not withdrawn");
         }
 
-        EntryPersisted current = entries.get(snapshot.getId());
-        if (current == null) {
-            throw new EntryNotFoundException("Entry not found: id=" + snapshot.getId());
-        }
-
-        current.setWithdrawalReason(withdrawReason);
-        snapshot.setWithdrawalReason(withdrawReason);
+        // todo: write changes
     }
 
     @Override
@@ -271,25 +211,8 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("Cannot update data on withdrawn entry");
         }
 
-        EntryPersisted current = entries.get(snapshot.getId());
-        if (current == null) {
-            throw new EntryNotFoundException("Entry not found: id=" + snapshot.getId());
-        }
+        // todo: write changes
 
-        // Check version for optimistic locking
-        if (snapshot.getVersion() != current.getVersion()) {
-            throw new ConcurrentDataModificationException(
-                    "Entry was modified concurrently: expected version " + snapshot.getVersion()
-                            + " but found " + current.getVersion()
-            );
-        }
-
-        // Update data and version
-        current.setData(newData);
-        current.setVersion(current.getVersion() + 1);
-
-        snapshot.setData(newData);
-        snapshot.setVersion(current.getVersion());
     }
 
     @Override
@@ -298,16 +221,7 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        EntryPersisted toDelete = entries.values().stream()
-                .filter(s -> s.getType().getIdentifier().equals(type) && s.getRelId() == relId)
-                .findFirst()
-                .orElse(null);
-
-        if (toDelete == null) {
-            throw new EntryNotFoundException("Entry not found: type=" + type + ", relId=" + relId);
-        }
-
-        delete(toDelete.getId());
+        // todo: write changes
     }
 
     @Override
@@ -316,24 +230,7 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
-        EntryPersisted toDelete = entries.get(id);
-        if (toDelete == null) {
-            throw new EntryNotFoundException("Entry not found: id=" + id);
-        }
-
-        if (toDelete.isWithdrawn()) {
-            throw new IllegalStateException("Cannot delete withdrawn entry: id=" + id);
-        }
-
-        // Clear references to this entry from other entries
-        entries.values().forEach(s -> {
-            if (s.getOverriddenBy() != null && s.getOverriddenBy().equals(id)) {
-                s.setOverriddenBy(null);
-            }
-        });
-
-        // Delete the entry
-        entries.remove(id);
+        // todo: write changes
     }
 
     // Helper methods

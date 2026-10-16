@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
  * </p>
  */
 @RequiredArgsConstructor
-public class DatabaseService implements IStorageService {
+public class DatabaseStorageService implements IStorageService {
     private final @NotNull SanctionManagerCore core;
     private final @NotNull DatabaseConfig databaseConfig;
 

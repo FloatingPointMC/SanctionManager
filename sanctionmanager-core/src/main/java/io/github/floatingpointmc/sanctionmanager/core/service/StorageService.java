@@ -2,8 +2,8 @@ package io.github.floatingpointmc.sanctionmanager.core.service;
 
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.StorageConfig;
-import io.github.floatingpointmc.sanctionmanager.core.service.storage.BinaryFileService;
-import io.github.floatingpointmc.sanctionmanager.core.service.storage.DatabaseService;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.BinaryFileStorageService;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.DatabaseStorageService;
 import io.github.floatingpointmc.sanctionmanager.core.service.storage.IStorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -30,10 +30,10 @@ public class StorageService {
         StorageConfig config = core.getConfig().getStorageConfig();
         if (config.isUsingDatabase()) {
             assert config.getDatabaseConfig() != null;
-            storageService = new DatabaseService(core, config.getDatabaseConfig());
+            storageService = new DatabaseStorageService(core, config.getDatabaseConfig());
         } else {
             assert config.getBinaryFileConfig() != null;
-            storageService = new BinaryFileService(core, config.getBinaryFileConfig());
+            storageService = new BinaryFileStorageService(core, config.getBinaryFileConfig());
         }
     }
 

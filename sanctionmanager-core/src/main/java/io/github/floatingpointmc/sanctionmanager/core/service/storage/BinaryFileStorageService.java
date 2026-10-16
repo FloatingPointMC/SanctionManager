@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class BinaryFileService implements IStorageService {
+public class BinaryFileStorageService implements IStorageService {
     private final SanctionManagerCore core;
     private final BinaryFileConfig config;
 //    private StorageEngine engine;
@@ -30,13 +30,12 @@ public class BinaryFileService implements IStorageService {
     @Override
     public void initialize() {
 //        try {
-            int pageSize = config.getPage();
-            if (pageSize < 512) {
-                throw new IllegalArgumentException("Invalid page size: " + pageSize + " (minimum 512)");
-            }
+        int pageSize = config.getPage();
+        if (pageSize < 512) {
+            throw new IllegalArgumentException("Invalid page size: " + pageSize + " (minimum 512)");
+        }
 
-            String dbPath = config.getFilePath();
-            int cacheCapacity = config.getCacheCapacity();
+        String dbPath = config.getFilePath();
 //
 //            engine = new StorageEngine(
 //                    Paths.get(dbPath),
@@ -44,7 +43,7 @@ public class BinaryFileService implements IStorageService {
 //                    cacheCapacity
 //            );
 //            engine.initialize();
-            log.info("Binary file storage engine initialized: path={}, pageSize={}, cacheCapacity={}", dbPath, pageSize, cacheCapacity);
+        log.info("Binary file storage engine initialized: path={}, pageSize={}", dbPath, pageSize);
 //        } catch (IOException e) {
 //            log.error("Failed to initialize binary file storage", e);
 //            throw new RuntimeException("Storage initialization failed", e);
