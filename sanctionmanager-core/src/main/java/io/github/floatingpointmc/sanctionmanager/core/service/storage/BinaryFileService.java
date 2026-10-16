@@ -6,6 +6,12 @@ import io.github.floatingpointmc.sanctionmanager.core.config.storage.BinaryFileC
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Storage service implementation using binary file-based backend.
+ * <p>
+ * Initializes and manages binary file persistence for entries with configurable page size and caching.
+ * </p>
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class BinaryFileService implements IStorageService {
@@ -13,6 +19,14 @@ public class BinaryFileService implements IStorageService {
     private final BinaryFileConfig config;
 //    private StorageEngine engine;
 
+    /**
+     * Initializes the binary file storage implementation.
+     * <p>
+     * Validates configuration parameters and prepares the file-based persistence layer.
+     * </p>
+     *
+     * @throws IllegalArgumentException if the page size is less than 512 bytes
+     */
     @Override
     public void initialize() {
 //        try {
@@ -55,4 +69,3 @@ public class BinaryFileService implements IStorageService {
         return "BinaryFileService";
     }
 }
-

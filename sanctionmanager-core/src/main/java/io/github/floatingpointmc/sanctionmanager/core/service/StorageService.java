@@ -8,11 +8,23 @@ import io.github.floatingpointmc.sanctionmanager.core.service.storage.IStorageSe
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * Facade for the persistence storage layer.
+ * <p>
+ * Delegates to either {@code DatabaseService} or {@code BinaryFileService} based on configuration.
+ * Handles initialization of the selected storage implementation.
+ * </p>
+ */
 @Slf4j
 public class StorageService {
     private final @NotNull SanctionManagerCore core;
     private final @NotNull IStorageService storageService;
 
+    /**
+     * Constructs a StorageService that selects the appropriate backend based on configuration.
+     *
+     * @param core the Core instance. Cannot be null.
+     */
     public StorageService(@NotNull SanctionManagerCore core) {
         this.core = core;
         StorageConfig config = core.getConfig().getStorageConfig();
@@ -25,6 +37,12 @@ public class StorageService {
         }
     }
 
+    /**
+     * Initializes the selected storage implementation.
+     * <p>
+     * Must be called during Core initialization to set up the persistence layer.
+     * </p>
+     */
     public void initialize() {
         log.info("Initializing storage({})", storageService);
         storageService.initialize();
