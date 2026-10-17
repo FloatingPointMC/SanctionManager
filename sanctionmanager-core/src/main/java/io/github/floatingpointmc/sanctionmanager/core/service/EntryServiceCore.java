@@ -1,8 +1,6 @@
 package io.github.floatingpointmc.sanctionmanager.core.service;
 
 import com.google.gson.JsonObject;
-import io.github.floatingpointmc.sanctionmanager.api.exceptions.ConcurrentDataModificationException;
-import io.github.floatingpointmc.sanctionmanager.api.exceptions.persistence.EntryNotFoundException;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
@@ -11,7 +9,6 @@ import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryWrapper;
-import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,11 +23,17 @@ import java.util.concurrent.atomic.AtomicLong;
  * would use a database for persistence.
  * </p>
  */
-@RequiredArgsConstructor
 public class EntryServiceCore implements EntryService {
     private final SanctionManagerCore core;
     private final Map<String, AtomicLong> typeRelIdCounters = new ConcurrentHashMap<>();
     private final AtomicLong idCounter = new AtomicLong(0);
+
+    public EntryServiceCore(SanctionManagerCore core) {
+        if (core.isInitialized()) {
+            throw new IllegalStateException("SanctionManagerCore is already initialized");
+        }
+        this.core = core;
+    }
 
     @Override
     public void execute(@NotNull Entry entry) {

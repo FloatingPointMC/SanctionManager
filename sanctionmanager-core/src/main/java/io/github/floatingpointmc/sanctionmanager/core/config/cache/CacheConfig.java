@@ -15,7 +15,7 @@ public final class CacheConfig {
     /** Whether caching is enabled. */
     private final boolean enabled;
     /** Whether to use Redis for caching (only meaningful if enabled is true). */
-    private final boolean useRedis;
+    private final boolean usingRedis;
     /** Redis configuration, non-null if {@code enabled} and {@code useRedis} are both true. */
     private final @Nullable RedisConfig redisConfig;
 
@@ -27,21 +27,21 @@ public final class CacheConfig {
      * </p>
      *
      * @param enabled     whether caching is enabled
-     * @param useRedis    whether to use Redis for caching
+     * @param usingRedis    whether to use Redis for caching
      * @param redisConfig Redis configuration (required if enabled and useRedis are true)
      * @throws NullPointerException if Redis is enabled but redisConfig is null
      */
-    public CacheConfig(boolean enabled, boolean useRedis, @Nullable RedisConfig redisConfig) {
+    public CacheConfig(boolean enabled, boolean usingRedis, @Nullable RedisConfig redisConfig) {
         this.enabled = enabled;
         if (!enabled) {
-            this.useRedis = false;
+            this.usingRedis = false;
             this.redisConfig = null;
             return;
         }
-        if (useRedis && redisConfig == null) {
+        if (usingRedis && redisConfig == null) {
             throw new NullPointerException("redisConfig cannot be null while using redis cache");
         }
-        this.useRedis = useRedis;
+        this.usingRedis = usingRedis;
         this.redisConfig = redisConfig;
     }
 }

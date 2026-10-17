@@ -26,6 +26,9 @@ public class StorageService {
      * @param core the Core instance. Cannot be null.
      */
     public StorageService(@NotNull SanctionManagerCore core) {
+        if (core.isInitialized()) {
+            throw new IllegalStateException("SanctionManagerCore is already initialized");
+        }
         this.core = core;
         StorageConfig config = core.getConfig().getStorageConfig();
         if (config.isUsingDatabase()) {

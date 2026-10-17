@@ -24,6 +24,7 @@ dependencies {
     implementation("redis.clients:jedis:8.0.1")
     implementation("com.zaxxer:HikariCP:4.0.3")
     implementation("org.slf4j:slf4j-api:2.0.20")
+    implementation("io.lettuce:lettuce-core:7.9.0.RELEASE")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.0")
