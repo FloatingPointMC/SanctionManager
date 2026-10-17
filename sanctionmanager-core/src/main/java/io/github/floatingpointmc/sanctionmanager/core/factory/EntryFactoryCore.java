@@ -41,9 +41,9 @@ public class EntryFactoryCore implements EntryFactory {
             throw new IllegalArgumentException(String.format("type is not registered(type=%s)", type));
         }
         EntryType entryType = core.getTypeManager().getType(type);
-        boolean requireExtraData = entryType.withExtraData();
-        if (requireExtraData == (data == null)) {
-            throw new IllegalArgumentException(String.format("extra data is not compatible(type=%s, requireExtraData=%s, data=%s)", type, requireExtraData, data));
+        boolean withExtraData = entryType.withExtraData();
+        if (withExtraData == (data == null)) {
+            throw new IllegalArgumentException(String.format("extra data is not compatible(type=%s, withExtraData=%s, data=%s)", type, withExtraData, data));
         }
         if (duration != null && duration.isNegative()) {
             throw new IllegalArgumentException("duration cannot be negative");

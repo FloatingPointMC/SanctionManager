@@ -50,4 +50,13 @@ public class StorageService {
         log.info("Initializing storage({})", storageService);
         storageService.initialize();
     }
+
+    /**
+     * Gets the underlying storage service implementation.
+     *
+     * @return the storage service instance
+     */
+    public @NotNull IStorageService getStorageService() {
+        return storageService;
+    }
 }

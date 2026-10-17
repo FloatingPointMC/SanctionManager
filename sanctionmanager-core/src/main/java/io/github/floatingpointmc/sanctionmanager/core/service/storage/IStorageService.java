@@ -1,9 +1,17 @@
 package io.github.floatingpointmc.sanctionmanager.core.service.storage;
 
+import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 /**
  * Interface for storage layer implementations.
  * <p>
  * Concrete implementations handle persistence via database or binary file storage.
+ * All methods may throw IOException for storage-level errors.
  * </p>
  */
 public interface IStorageService {
@@ -15,4 +23,75 @@ public interface IStorageService {
      * </p>
      */
     void initialize();
+
+    /**
+     * Inserts a new entry record into persistent storage.
+     *
+     * @param entry the entry to insert
+     * @return the assigned ID for the entry
+     * @throws IOException if storage operation fails
+     */
+    long insertRecord(EntryPersisted entry) throws IOException;
+
+    /**
+     * Retrieves an entry by its ID.
+     *
+     * @param id the entry ID
+     * @return an Optional containing the entry if found, or empty if not found
+     * @throws IOException if storage operation fails
+     */
+    Optional<EntryPersisted> getRecord(long id) throws IOException;
+
+    /**
+     * Queries all entries for a given target UUID.
+     *
+     * @param target the target UUID
+     * @return a list of matching entries (may be empty)
+     * @throws IOException if storage operation fails
+     */
+    List<EntryPersisted> queryByTarget(UUID target) throws IOException;
+
+    /**
+     * Queries entries by type identifier and related ID.
+     *
+     * @param typeId the type identifier
+     * @param relId  the related ID
+     * @return a list of matching entries (may be empty)
+     * @throws IOException if storage operation fails
+     */
+    List<EntryPersisted> queryByTypeAndRelId(String typeId, long relId) throws IOException;
+
+    /**
+     * Queries all entries in storage.
+     * <p>
+     * This is an expensive operation and should be used sparingly.
+     * </p>
+     *
+     * @return a list of all entries (may be empty)
+     * @throws IOException if storage operation fails
+     */
+    List<EntryPersisted> queryAll() throws IOException;
+
+    /**
+     * Updates an existing entry record in persistent storage.
+     *
+     * @param entry the entry to update
+     * @throws IOException if storage operation fails
+     */
+    void updateRecord(EntryPersisted entry) throws IOException;
+
+    /**
+     * Deletes an entry by its ID.
+     *
+     * @param id the entry ID to delete
+     * @throws IOException if storage operation fails
+     */
+    void deleteRecord(long id) throws IOException;
+
+    /**
+     * Shuts down the storage implementation, releasing all resources.
+     *
+     * @throws IOException if shutdown fails
+     */
+    void shutdown() throws IOException;
 }

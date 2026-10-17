@@ -8,6 +8,7 @@ import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import io.github.floatingpointmc.sanctionmanager.core.config.CoreConfig;
 import io.github.floatingpointmc.sanctionmanager.core.factory.EntryFactoryCore;
 import io.github.floatingpointmc.sanctionmanager.core.management.TypeManager;
+import io.github.floatingpointmc.sanctionmanager.core.service.CacheService;
 import io.github.floatingpointmc.sanctionmanager.core.service.EntryServiceCore;
 import io.github.floatingpointmc.sanctionmanager.core.service.StorageService;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public class SanctionManagerCore implements SanctionManager {
     private final @NotNull EntryService entryService;
     private final @NotNull EntryFactory entryFactory;
     private final @NotNull StorageService storageService;
+    private final @NotNull CacheService cacheService;
     private @Nullable TypeManager typeManager;
     @Getter
     private final @NotNull CoreConfig config;
@@ -46,6 +48,7 @@ public class SanctionManagerCore implements SanctionManager {
         entryService = new EntryServiceCore(this);
         entryFactory = new EntryFactoryCore(this);
         storageService = new StorageService(this);
+        cacheService = new CacheService(this);
     }
 
     public SanctionManagerCore types(EntryType @NotNull ... types) {
@@ -117,6 +120,10 @@ public class SanctionManagerCore implements SanctionManager {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
         return storageService;
+    }
+
+    public @NotNull CacheService getCacheService() {
+        return cacheService;
     }
 
     public @NotNull TypeManager getTypeManager() {

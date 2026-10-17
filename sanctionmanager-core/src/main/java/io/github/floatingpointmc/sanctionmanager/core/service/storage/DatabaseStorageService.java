@@ -2,9 +2,14 @@ package io.github.floatingpointmc.sanctionmanager.core.service.storage;
 
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.DatabaseConfig;
-import io.github.floatingpointmc.sanctionmanager.core.storage.SanctionManagerDataSource;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Storage service implementation using a database backend.
@@ -28,6 +33,46 @@ public class DatabaseStorageService implements IStorageService {
     @Override
     public void initialize() {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public long insertRecord(EntryPersisted entry) throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public Optional<EntryPersisted> getRecord(long id) throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public List<EntryPersisted> queryByTarget(UUID target) throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public List<EntryPersisted> queryByTypeAndRelId(String typeId, long relId) throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public List<EntryPersisted> queryAll() throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public void updateRecord(EntryPersisted entry) throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public void deleteRecord(long id) throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    @Override
+    public void shutdown() throws IOException {
+        // No-op for unimplemented database storage
     }
 
     @Override

@@ -2,12 +2,17 @@ package io.github.floatingpointmc.sanctionmanager.core.service.storage;
 
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.BinaryFileConfig;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import io.github.floatingpointmc.sanctionmanager.core.storage.engine.StorageEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Storage service implementation using binary file-based backend.
@@ -56,16 +61,63 @@ public class BinaryFileStorageService implements IStorageService {
         }
     }
 
-    public StorageEngine getEngine() {
-        if (engine == null) {
-            throw new IllegalStateException("Storage engine not initialized");
-        }
-        return engine;
+    @Override
+    public long insertRecord(EntryPersisted entry) throws IOException {
+        ensureInitialized();
+        return engine.insertRecord(entry);
     }
 
+    @Override
+    public Optional<EntryPersisted> getRecord(long id) throws IOException {
+        ensureInitialized();
+        return engine.getRecord(id);
+    }
+
+    @Override
+    public List<EntryPersisted> queryByTarget(UUID target) throws IOException {
+        ensureInitialized();
+        return engine.queryByTarget(target);
+    }
+
+    @Override
+    public List<EntryPersisted> queryByTypeAndRelId(String typeId, long relId) throws IOException {
+        ensureInitialized();
+        return engine.queryByTypeAndRelId(typeId, relId);
+    }
+
+    @Override
+    public List<EntryPersisted> queryAll() throws IOException {
+        ensureInitialized();
+        List<EntryPersisted> result = new ArrayList<>();
+        for (Long id : engine.getPrimaryIndex().keySet()) {
+            Optional<EntryPersisted> entry = engine.getRecord(id);
+            entry.ifPresent(result::add);
+        }
+        return result;
+    }
+
+    @Override
+    public void updateRecord(EntryPersisted entry) throws IOException {
+        ensureInitialized();
+        engine.updateRecord(entry);
+    }
+
+    @Override
+    public void deleteRecord(long id) throws IOException {
+        ensureInitialized();
+        engine.deleteRecord(id);
+    }
+
+    @Override
     public void shutdown() throws IOException {
         if (engine != null) {
             engine.shutdown();
+        }
+    }
+
+    private void ensureInitialized() {
+        if (engine == null) {
+            throw new IllegalStateException("Storage engine not initialized");
         }
     }
 
