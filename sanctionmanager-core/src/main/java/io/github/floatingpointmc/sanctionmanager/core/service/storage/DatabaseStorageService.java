@@ -20,12 +20,14 @@ public class DatabaseStorageService implements IStorageService {
     /**
      * Initializes the database storage implementation.
      * <p>
-     * Sets up database connectivity and prepares persistence infrastructure.
+     * Database support is not yet implemented. This method throws {@code UnsupportedOperationException}.
      * </p>
+     *
+     * @throws UnsupportedOperationException always, as database support is not implemented
      */
     @Override
     public void initialize() {
-        SanctionManagerDataSource dataSource = new SanctionManagerDataSource();
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
     @Override
