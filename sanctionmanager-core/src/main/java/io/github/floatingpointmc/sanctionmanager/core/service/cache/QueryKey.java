@@ -1,5 +1,6 @@
 package io.github.floatingpointmc.sanctionmanager.core.service.cache;
 
+import com.google.gson.JsonArray;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import org.jetbrains.annotations.NotNull;
 
@@ -30,6 +31,26 @@ public abstract class QueryKey {
      */
     @Override
     public abstract int hashCode();
+
+    /**
+     * Returns a deterministic textual form of this key, used by {@link RedisCacheService} to build Redis keys.
+     * <p>
+     * The form is a JSON array whose first element names the key kind, followed by every parameter that
+     * {@link #equals(Object)} compares. Absent time bounds are encoded as JSON {@code null} and type sets are
+     * encoded as sorted arrays, so two keys have the same canonical form if and only if they are equal.
+     * </p>
+     *
+     * @return the canonical form of this key
+     */
+    abstract @NotNull String canonicalForm();
+
+    private static JsonArray toJsonArray(Set<String> values) {
+        JsonArray array = new JsonArray();
+        for (String value : values) {
+            array.add(value);
+        }
+        return array;
+    }
 
     /**
      * Cache key for query(UUID target, QueryOptions options).
@@ -81,6 +102,20 @@ public abstract class QueryKey {
         @Override
         public int hashCode() {
             return Objects.hash(target, includeExpired, includeWithdrawn, includeOverridden, types, startTime, endTime);
+        }
+
+        @Override
+        @NotNull String canonicalForm() {
+            JsonArray array = new JsonArray();
+            array.add("target");
+            array.add(target.toString());
+            array.add(includeExpired);
+            array.add(includeWithdrawn);
+            array.add(includeOverridden);
+            array.add(toJsonArray(types));
+            array.add(startTime);
+            array.add(endTime);
+            return array.toString();
         }
     }
 
@@ -135,6 +170,20 @@ public abstract class QueryKey {
             return Objects.hash(includeExpired, includeWithdrawn, includeOverridden,
                     optionsTypes, varargsTypes, startTime, endTime);
         }
+
+        @Override
+        @NotNull String canonicalForm() {
+            JsonArray array = new JsonArray();
+            array.add("all");
+            array.add(includeExpired);
+            array.add(includeWithdrawn);
+            array.add(includeOverridden);
+            array.add(toJsonArray(optionsTypes));
+            array.add(toJsonArray(varargsTypes));
+            array.add(startTime);
+            array.add(endTime);
+            return array.toString();
+        }
     }
 
     /**
@@ -167,6 +216,15 @@ public abstract class QueryKey {
         @Override
         public int hashCode() {
             return Objects.hash(target, types);
+        }
+
+        @Override
+        @NotNull String canonicalForm() {
+            JsonArray array = new JsonArray();
+            array.add("latest");
+            array.add(target.toString());
+            array.add(toJsonArray(types));
+            return array.toString();
         }
     }
 }

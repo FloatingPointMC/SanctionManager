@@ -58,7 +58,7 @@ public class EntryServiceCoreTest {
 
         // Create configuration
         BinaryFileConfig binaryFileConfig = new BinaryFileConfig(dataFile.toString(), 4096);
-        CacheConfig cacheConfig = new CacheConfig(false, false, null); // Caching disabled for now
+        CacheConfig cacheConfig = CacheConfig.disabled(); // Caching disabled for now
         StorageConfig storageConfig = new StorageConfig(false, binaryFileConfig, null);
         CoreConfig coreConfig = new CoreConfig(storageConfig, cacheConfig);
 
@@ -443,7 +443,7 @@ public class EntryServiceCoreTest {
 
         try {
             Thread.sleep(10);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
 
         // Create permanent entry

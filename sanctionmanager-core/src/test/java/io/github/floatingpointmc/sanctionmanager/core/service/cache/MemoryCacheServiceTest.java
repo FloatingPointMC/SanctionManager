@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.sanctionmanager.core.service.cache;
 
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
+import io.github.floatingpointmc.sanctionmanager.core.config.cache.MemoryCacheConfig;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ public class MemoryCacheServiceTest {
 
     @BeforeEach
     public void setUp() {
-        cache = new MemoryCacheService(5, 3); // Small capacities for testing
+        cache = new MemoryCacheService(new MemoryCacheConfig(5, 3)); // Small capacities for testing
         testType = EntryType.of("test");
     }
 
@@ -205,10 +206,10 @@ public class MemoryCacheServiceTest {
 
     @Test
     public void testInvalidCapacityValues() {
-        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(0, 100));
-        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(100, 0));
-        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(-1, 100));
-        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(100, -1));
+        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(new MemoryCacheConfig(0, 100)));
+        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(new MemoryCacheConfig(100, 0)));
+        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(new MemoryCacheConfig(-1, 100)));
+        assertThrows(IllegalArgumentException.class, () -> new MemoryCacheService(new MemoryCacheConfig(100, -1)));
     }
 
     private EntryPersisted createEntry(long id, long relId, String typeId) {

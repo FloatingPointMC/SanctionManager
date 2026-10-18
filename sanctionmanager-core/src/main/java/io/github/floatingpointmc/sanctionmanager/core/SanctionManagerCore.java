@@ -138,7 +138,8 @@ public class SanctionManagerCore implements SanctionManager {
      * Shuts down the Core and clears the active API instance.
      * <p>
      * After shutdown, service operations throw {@code IllegalStateException}. The storage backend is
-     * currently not shut down by this method, so open storage resources are not released.
+     * currently not shut down by this method, so open storage resources are not released. Cache backend
+     * resources, such as the Redis connection, are released.
      * </p>
      */
     public void shutdown() {
@@ -146,6 +147,7 @@ public class SanctionManagerCore implements SanctionManager {
 //            storageService.shutdown();
             initialized = false;
             SanctionManagerAPI.clearApi();
+            cacheService.shutdown();
         }
     }
 

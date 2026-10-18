@@ -34,12 +34,16 @@ public class CacheService {
      * Constructs a CacheService from the Core's cache configuration.
      * <p>
      * If caching is disabled, no backend is created. If Redis is selected, a {@link RedisCacheService} is
-     * created; it is not implemented and every cache operation throws {@code UnsupportedOperationException}.
-     * Otherwise a {@link MemoryCacheService} is created.
+     * created; it connects on first use. Otherwise a {@link MemoryCacheService} is created.
+     * </p>
+     * <p>
+     * With Redis, cache operations throw {@code PersistenceException} subclasses when Redis is unreachable or
+     * returns invalid data; there is no fallback to the in-memory cache.
      * </p>
      *
      * @param core the Core instance whose configuration is read. Cannot be null.
-     * @throws IllegalArgumentException if the memory cache is selected and its capacities are not positive
+     * @throws IllegalArgumentException if the memory cache is selected and its capacities are not positive, or if
+     *                                  Redis is selected and its host or port is invalid
      */
     public CacheService(SanctionManagerCore core) {
         CacheConfig config = core.getConfig().getCacheConfig();
@@ -208,6 +212,24 @@ public class CacheService {
     public void invalidateAllQueryResults() {
         if (enabled) {
             cacheService.invalidateAllQueryResults();
+        }
+    }
+
+    /**
+     * Releases resources held by the cache backend, such as the Redis connection.
+     * <p>
+     * Cached data is kept. The service remains usable; a Redis backend reconnects on its next operation.
+     * </p>
+     */
+    public void shutdown() {
+        if (cacheService instanceof AutoCloseable) {
+            try {
+                ((AutoCloseable) cacheService).close();
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IllegalStateException("Failed to close the cache backend", e);
+            }
         }
     }
 

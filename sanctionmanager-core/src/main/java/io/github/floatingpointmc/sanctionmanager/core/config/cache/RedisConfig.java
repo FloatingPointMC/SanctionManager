@@ -8,10 +8,9 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Configuration for Redis-backed caching.
  * <p>
- * Specifies the Redis server connection details and authentication credentials.
- * </p>
- * <p>
- * Note: Redis caching is not implemented. The values are stored but never used to open a connection.
+ * Specifies the Redis server connection details and authentication credentials. The credential is requested
+ * on every connection handshake; an empty username authenticates with the password only, and an empty password
+ * disables authentication.
  * </p>
  */
 @RequiredArgsConstructor

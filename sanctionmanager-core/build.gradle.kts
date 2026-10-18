@@ -21,7 +21,6 @@ repositories {
 
 dependencies {
     api(project(":sanctionmanager-api"))
-    implementation("redis.clients:jedis:8.0.1")
     implementation("com.zaxxer:HikariCP:4.0.3")
     implementation("org.slf4j:slf4j-api:2.0.20")
     implementation("io.lettuce:lettuce-core:7.9.0.RELEASE")

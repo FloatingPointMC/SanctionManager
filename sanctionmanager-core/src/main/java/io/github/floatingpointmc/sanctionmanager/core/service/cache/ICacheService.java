@@ -17,8 +17,8 @@ import java.util.Optional;
  * </ul>
  * <p>
  * Eviction and bounding are implementation-dependent; {@link MemoryCacheService} uses bounded LRU caches,
- * while {@link RedisCacheService} is not implemented. Query results are valid only if all referenced entries
- * can be resolved from the entry cache.
+ * while {@link RedisCacheService} relies on the Redis server's eviction policy. Query results are valid only if all
+ * referenced entries can be resolved from the entry cache.
  * </p>
  */
 public interface ICacheService {

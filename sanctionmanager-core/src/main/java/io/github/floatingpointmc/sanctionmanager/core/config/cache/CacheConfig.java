@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
  * </p>
  * <p>
  * The in-memory cache uses bounded LRU eviction for both individual entries and query results.
+ * The Redis cache is unbounded; memory is limited by the Redis server's eviction policy.
  * </p>
  */
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
@@ -53,16 +54,15 @@ public final class CacheConfig {
     }
 
     /**
-     * Creates a configuration that selects Redis caching.
+     * Creates a configuration that enables the Redis cache.
      * <p>
-     * Note: the returned configuration has {@code enabled} set to {@code false}, so the Core treats caching as
-     * disabled and no Redis backend is created. Redis caching is also not implemented.
+     * The argument is not validated here; it is validated when the cache service is created.
      * </p>
      *
      * @param redisConfig the Redis configuration. Should not be null.
-     * @return a configuration with {@code enabled} set to {@code false} and {@code usingRedis} set to {@code true}
+     * @return a configuration with {@code enabled} and {@code usingRedis} set to {@code true}
      */
     public static CacheConfig redis(@NotNull RedisConfig redisConfig) {
-        return new CacheConfig(false, true, redisConfig, null);
+        return new CacheConfig(true, true, redisConfig, null);
     }
 }

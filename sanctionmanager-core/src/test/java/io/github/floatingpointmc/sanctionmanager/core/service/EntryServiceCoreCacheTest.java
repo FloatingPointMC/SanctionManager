@@ -6,6 +6,7 @@ import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.CoreConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.cache.CacheConfig;
+import io.github.floatingpointmc.sanctionmanager.core.config.cache.MemoryCacheConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.BinaryFileConfig;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.StorageConfig;
 import io.github.floatingpointmc.sanctionmanager.core.factory.EntryFactoryCore;
@@ -50,7 +51,7 @@ public class EntryServiceCoreCacheTest {
 
         // Create configuration with caching ENABLED and small capacities
         BinaryFileConfig binaryFileConfig = new BinaryFileConfig(dataFile.toString(), 4096);
-        CacheConfig cacheConfig = new CacheConfig(true, false, null, 100, 50);
+        CacheConfig cacheConfig = CacheConfig.memory(new MemoryCacheConfig(100, 50));
         StorageConfig storageConfig = new StorageConfig(false, binaryFileConfig, null);
         CoreConfig coreConfig = new CoreConfig(storageConfig, cacheConfig);
 
