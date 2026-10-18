@@ -10,6 +10,7 @@ import io.github.floatingpointmc.sanctionmanager.core.service.cache.RedisCacheSe
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,42 +47,78 @@ public class CacheService {
 
     /**
      * Retrieves an entry by ID from cache.
+     * <p>
+     * Checks if the entry has expired since caching and treats expired entries as cache misses.
+     * This ensures that consumers never receive stale expired entries from cache.
+     * </p>
      *
      * @param id the entry ID
-     * @return an Optional containing the cached entry, or empty if not cached or caching is disabled
+     * @return an Optional containing the cached entry, or empty if not cached, expired, or caching is disabled
      */
     public @NotNull Optional<EntryPersisted> getById(long id) {
         if (!enabled) {
             return Optional.empty();
         }
-        return cacheService.getById(id);
+        Optional<EntryPersisted> cached = cacheService.getById(id);
+        if (cached.isPresent() && isExpired(cached.get())) {
+            // Entry expired since caching - treat as miss and invalidate
+            cacheService.invalidateById(id);
+            return Optional.empty();
+        }
+        return cached;
     }
 
     /**
      * Retrieves an entry by type and relId from cache.
+     * <p>
+     * Checks if the entry has expired since caching and treats expired entries as cache misses.
+     * This ensures that consumers never receive stale expired entries from cache.
+     * </p>
      *
      * @param typeId the type identifier
      * @param relId  the related ID
-     * @return an Optional containing the cached entry, or empty if not cached or caching is disabled
+     * @return an Optional containing the cached entry, or empty if not cached, expired, or caching is disabled
      */
     public @NotNull Optional<EntryPersisted> getByTypeAndRelId(@NotNull String typeId, long relId) {
         if (!enabled) {
             return Optional.empty();
         }
-        return cacheService.getByTypeAndRelId(typeId, relId);
+        Optional<EntryPersisted> cached = cacheService.getByTypeAndRelId(typeId, relId);
+        if (cached.isPresent() && isExpired(cached.get())) {
+            // Entry expired since caching - treat as miss and invalidate
+            cacheService.invalidateByTypeAndRelId(typeId, relId);
+            return Optional.empty();
+        }
+        return cached;
     }
 
     /**
      * Retrieves a cached query result.
+     * <p>
+     * If any entry in the cached result has expired since caching, treats the entire
+     * query result as invalid and returns empty. This prevents returning query results
+     * that contain stale expired entries.
+     * </p>
      *
      * @param key the query key
-     * @return an Optional containing the resolved result list, or empty if not cached or caching is disabled
+     * @return an Optional containing the resolved result list, or empty if not cached, contains expired entries, or caching is disabled
      */
     public @NotNull Optional<List<EntryPersisted>> getQueryResult(@NotNull QueryKey key) {
         if (!enabled) {
             return Optional.empty();
         }
-        return cacheService.getQueryResult(key);
+        Optional<List<EntryPersisted>> cached = cacheService.getQueryResult(key);
+        if (cached.isPresent()) {
+            // Check if any entry in the result has expired
+            for (EntryPersisted entry : cached.get()) {
+                if (isExpired(entry)) {
+                    // Query result contains expired entry - invalidate and treat as miss
+                    cacheService.invalidateQueryResult(key);
+                    return Optional.empty();
+                }
+            }
+        }
+        return cached;
     }
 
     /**
@@ -161,5 +198,22 @@ public class CacheService {
         if (enabled) {
             cacheService.invalidateAllQueryResults();
         }
+    }
+
+    /**
+     * Checks if an entry has expired based on its expiryTime.
+     * <p>
+     * An entry is considered expired if it has a non-null expiryTime that is in the past.
+     * </p>
+     *
+     * @param entry the entry to check
+     * @return true if the entry has expired, false otherwise
+     */
+    private boolean isExpired(EntryPersisted entry) {
+        Date expiryTime = entry.getExpiryTime();
+        if (expiryTime == null) {
+            return false;
+        }
+        return expiryTime.before(new Date());
     }
 }

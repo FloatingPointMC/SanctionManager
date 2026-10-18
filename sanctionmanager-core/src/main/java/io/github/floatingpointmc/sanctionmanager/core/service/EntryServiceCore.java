@@ -67,7 +67,7 @@ public class EntryServiceCore implements EntryService {
         if (cached.isPresent()) {
             // Cache hit - return wrapped entries
             return cached.get().stream()
-                    .map(e -> (Entry) new EntryWrapper(e))
+                    .map(this::wrapWithDefensiveCopy)
                     .collect(Collectors.collectingAndThen(
                             Collectors.toList(),
                             Collections::unmodifiableList
@@ -100,7 +100,7 @@ public class EntryServiceCore implements EntryService {
             core.getCacheService().putQueryResult(queryKey, result);
 
             return result.stream()
-                    .map(e -> (Entry) new EntryWrapper(e))
+                    .map(this::wrapWithDefensiveCopy)
                     .collect(Collectors.collectingAndThen(
                             Collectors.toList(),
                             Collections::unmodifiableList
@@ -138,7 +138,7 @@ public class EntryServiceCore implements EntryService {
         if (cached.isPresent()) {
             // Cache hit - return wrapped entries
             return cached.get().stream()
-                    .map(e -> (Entry) new EntryWrapper(e))
+                    .map(this::wrapWithDefensiveCopy)
                     .collect(Collectors.collectingAndThen(
                             Collectors.toList(),
                             Collections::unmodifiableList
@@ -172,7 +172,7 @@ public class EntryServiceCore implements EntryService {
             core.getCacheService().putQueryResult(queryKey, result);
 
             return result.stream()
-                    .map(e -> (Entry) new EntryWrapper(e))
+                    .map(this::wrapWithDefensiveCopy)
                     .collect(Collectors.collectingAndThen(
                             Collectors.toList(),
                             Collections::unmodifiableList
@@ -405,17 +405,33 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("Entry is withdrawn");
         }
 
-        // Update data field
-        current.setData(newData);
+        // Create updated copy without mutating the original
+        EntryPersisted updated = new EntryPersisted(
+            current.getId(),
+            current.getRelId(),
+            current.getType(),
+            current.getTarget(),
+            current.getExecutor(),
+            current.getExpiryTime(),
+            current.getExecutingTime(),
+            current.getReason(),
+            newData, // Updated data
+            current.getWithdrawnBy(),
+            current.getWithdrawalReason(),
+            current.isOverridden(),
+            current.getOverriddenBy(),
+            current.getVersion()
+        );
 
-        // Update persistent storage
+        // Update persistent storage first
         try {
             IStorageService storage = core.getStorageService().getStorageService();
-            storage.updateRecord(current);
+            storage.updateRecord(updated);
 
-            // Update entry cache
-            core.getCacheService().invalidateById(current.getId());
-            core.getCacheService().put(current);
+            // Only after successful storage update, update wrapper and cache
+            wrapper.entry = updated;
+            core.getCacheService().invalidateById(updated.getId());
+            core.getCacheService().put(updated);
 
             // Invalidate all query results (data change may affect query results)
             core.getCacheService().invalidateAllQueryResults();
@@ -448,18 +464,33 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("Entry is already withdrawn");
         }
 
-        // Update fields
-        current.setWithdrawnBy(withdrawnBy);
-        current.setWithdrawalReason(withdrawReason);
+        // Create updated copy without mutating the original
+        EntryPersisted updated = new EntryPersisted(
+            current.getId(),
+            current.getRelId(),
+            current.getType(),
+            current.getTarget(),
+            current.getExecutor(),
+            current.getExpiryTime(),
+            current.getExecutingTime(),
+            current.getReason(),
+            current.getDataInternal(),
+            withdrawnBy, // Updated withdrawnBy
+            withdrawReason, // Updated withdrawReason
+            current.isOverridden(),
+            current.getOverriddenBy(),
+            current.getVersion()
+        );
 
-        // Update persistent storage
+        // Update persistent storage first
         try {
             IStorageService storage = core.getStorageService().getStorageService();
-            storage.updateRecord(current);
+            storage.updateRecord(updated);
 
-            // Update entry cache
-            core.getCacheService().invalidateById(current.getId());
-            core.getCacheService().put(current);
+            // Only after successful storage update, update wrapper and cache
+            wrapper.entry = updated;
+            core.getCacheService().invalidateById(updated.getId());
+            core.getCacheService().put(updated);
 
             // Invalidate all query results (withdrawal affects active/withdrawn state)
             core.getCacheService().invalidateAllQueryResults();
@@ -491,17 +522,33 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("Entry is not withdrawn");
         }
 
-        // Update reason
-        current.setWithdrawalReason(withdrawReason);
+        // Create updated copy without mutating the original
+        EntryPersisted updated = new EntryPersisted(
+            current.getId(),
+            current.getRelId(),
+            current.getType(),
+            current.getTarget(),
+            current.getExecutor(),
+            current.getExpiryTime(),
+            current.getExecutingTime(),
+            current.getReason(),
+            current.getDataInternal(),
+            current.getWithdrawnBy(),
+            withdrawReason, // Updated withdrawReason
+            current.isOverridden(),
+            current.getOverriddenBy(),
+            current.getVersion()
+        );
 
-        // Update persistent storage
+        // Update persistent storage first
         try {
             IStorageService storage = core.getStorageService().getStorageService();
-            storage.updateRecord(current);
+            storage.updateRecord(updated);
 
-            // Update entry cache
-            core.getCacheService().invalidateById(current.getId());
-            core.getCacheService().put(current);
+            // Only after successful storage update, update wrapper and cache
+            wrapper.entry = updated;
+            core.getCacheService().invalidateById(updated.getId());
+            core.getCacheService().put(updated);
 
             // Reason change doesn't affect query results structure, but invalidate for safety
             core.getCacheService().invalidateAllQueryResults();
@@ -605,6 +652,20 @@ public class EntryServiceCore implements EntryService {
                 core.getCacheService().put(e);
             }
         }
+    }
+
+    /**
+     * Wraps an EntryPersisted in an EntryWrapper using a defensive copy.
+     * <p>
+     * This ensures query results are independent snapshots that remain unchanged
+     * even if the cached or another wrapper's entry is later mutated.
+     * </p>
+     *
+     * @param entry the entry to wrap
+     * @return a new EntryWrapper containing a defensive copy
+     */
+    private Entry wrapWithDefensiveCopy(EntryPersisted entry) {
+        return new EntryWrapper(entry.defensiveCopy());
     }
 
     private boolean matchesStateFilter(EntryPersisted entry, QueryOptions options, Date now) {

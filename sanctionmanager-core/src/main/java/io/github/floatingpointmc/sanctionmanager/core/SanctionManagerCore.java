@@ -51,6 +51,21 @@ public class SanctionManagerCore implements SanctionManager {
         cacheService = new CacheService(this);
     }
 
+    /**
+     * Creates a new SanctionManagerCore instance with the specified configuration.
+     * <p>
+     * After creation, call {@link #types(EntryType...)} or {@link #addTypes(EntryType...)}
+     * to register entry types, then call {@link #initialize()} to activate the Core.
+     * </p>
+     *
+     * @param config the Core configuration
+     * @return a new uninitialized Core instance
+     */
+    public static SanctionManagerCore create(@NotNull CoreConfig config) {
+        Objects.requireNonNull(config, "config cannot be null");
+        return new SanctionManagerCore(config);
+    }
+
     public SanctionManagerCore types(EntryType @NotNull ... types) {
         validateTypes(types, Collections.emptyList());
         entryTypes.clear();
@@ -78,8 +93,9 @@ public class SanctionManagerCore implements SanctionManager {
             if (initialized) {
                 throw new IllegalStateException("SanctionManagerCore is already initialized");
             }
-            storageService.initialize();
+            // Create typeManager before initializing storage, as storage needs it
             typeManager = new TypeManager(entryTypes);
+            storageService.initialize();
             initialized = true;
             SanctionManagerAPI.setApi(this);
         }

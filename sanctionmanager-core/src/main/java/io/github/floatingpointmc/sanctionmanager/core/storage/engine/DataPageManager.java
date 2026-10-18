@@ -113,8 +113,10 @@ public class DataPageManager {
     /**
      * Updates a record in a data page.
      * If the record doesn't fit in its current location, it's relocated.
+     *
+     * @return the location of the updated record (may be different from input location)
      */
-    public void updateRecord(StorageEngine.EntryRecordLocation location, byte[] newRecordBytes) throws IOException {
+    public StorageEngine.EntryRecordLocation updateRecord(StorageEngine.EntryRecordLocation location, byte[] newRecordBytes) throws IOException {
         byte[] pageData = pageManager.readPage(location.pageId);
 
         // Read current slot
@@ -130,13 +132,14 @@ public class DataPageManager {
             System.arraycopy(newRecordBytes, 0, pageData, oldOffset, newRecordBytes.length);
             writePageCrc(pageData);
             pageManager.writePage(location.pageId, pageData);
+            return location; // Same location
         } else {
             // Mark old slot as free and insert as new record
             markSlotFree(pageData, location.slotIndex);
             pageManager.writePage(location.pageId, pageData);
 
-            // Insert new record (may go to different page)
-            insertIntoPage(location.pageId, newRecordBytes);
+            // Insert new record (may go to different page) and return new location
+            return insertIntoPage(location.pageId, newRecordBytes);
         }
     }
 

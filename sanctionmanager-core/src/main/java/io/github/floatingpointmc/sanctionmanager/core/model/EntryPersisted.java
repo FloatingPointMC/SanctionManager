@@ -91,4 +91,32 @@ public class EntryPersisted implements Entry {
     public @Nullable JsonObject getDataInternal() {
         return data;
     }
+
+    /**
+     * Creates a defensive deep copy of this EntryPersisted.
+     * <p>
+     * All mutable fields (Date, JsonObject) are copied to prevent external mutation.
+     * This ensures that query results remain independent snapshots.
+     * </p>
+     *
+     * @return a new independent copy of this entry
+     */
+    public EntryPersisted defensiveCopy() {
+        return new EntryPersisted(
+            id,
+            relId,
+            type,
+            target,
+            executor,
+            expiryTime != null ? new Date(expiryTime.getTime()) : null,
+            new Date(executingTime.getTime()),
+            reason,
+            data != null ? data.deepCopy() : null,
+            withdrawnBy,
+            withdrawalReason,
+            overridden,
+            overriddenBy,
+            version
+        );
+    }
 }

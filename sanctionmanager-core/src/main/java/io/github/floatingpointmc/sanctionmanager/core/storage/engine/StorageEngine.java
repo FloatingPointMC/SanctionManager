@@ -207,12 +207,21 @@ public class StorageEngine {
             throw new StorageException("Record not found: " + entry.getId());
         }
 
+        // Read old entry to remove from secondary indexes if type/target changed
+        EntryPersisted oldEntry = readRecord(location);
+
         // Encode and write
         byte[] recordBytes = recordCodec.encode(entry);
-        dataPageManager.updateRecord(location, recordBytes);
+        EntryRecordLocation newLocation = dataPageManager.updateRecord(location, recordBytes);
 
-        // Update indexes if needed
-        primaryIndex.put(entry.getId(), location);
+        // Remove old secondary index entries
+        removeFromSecondaryIndexes(oldEntry, location);
+
+        // Update primary index with new location (may be same or different)
+        primaryIndex.put(entry.getId(), newLocation);
+
+        // Re-index with new data
+        indexSecondaryIndexes(entry, newLocation);
 
         persistSuperblock();
     }
@@ -223,11 +232,14 @@ public class StorageEngine {
             return;
         }
 
+        // Read entry before deletion to get type and target for secondary index cleanup
+        EntryPersisted entry = readRecord(location);
+
         // Mark slot as free
         dataPageManager.deleteRecord(location);
 
         // Remove from secondary indexes
-        // TODO: Remove from type/rel and target indexes
+        removeFromSecondaryIndexes(entry, location);
 
         persistSuperblock();
     }
@@ -249,13 +261,37 @@ public class StorageEngine {
 
     private void indexRecord(EntryPersisted entry, EntryRecordLocation location) {
         primaryIndex.put(entry.getId(), location);
-        
+        indexSecondaryIndexes(entry, location);
+    }
+
+    private void indexSecondaryIndexes(EntryPersisted entry, EntryRecordLocation location) {
         String typeId = entry.getType().getIdentifier();
         typeRelIndex.computeIfAbsent(typeId, k -> new ConcurrentHashMap<>())
                     .put(entry.getRelId(), location);
-        
+
         targetIndex.computeIfAbsent(entry.getTarget(), k -> new ArrayList<>())
                    .add(location);
+    }
+
+    private void removeFromSecondaryIndexes(EntryPersisted entry, EntryRecordLocation location) {
+        // Remove from typeRelIndex
+        String typeId = entry.getType().getIdentifier();
+        Map<Long, EntryRecordLocation> typeMap = typeRelIndex.get(typeId);
+        if (typeMap != null) {
+            typeMap.remove(entry.getRelId());
+            if (typeMap.isEmpty()) {
+                typeRelIndex.remove(typeId);
+            }
+        }
+
+        // Remove from targetIndex
+        List<EntryRecordLocation> targetList = targetIndex.get(entry.getTarget());
+        if (targetList != null) {
+            targetList.remove(location);
+            if (targetList.isEmpty()) {
+                targetIndex.remove(entry.getTarget());
+            }
+        }
     }
 
     private void persistSuperblock() throws IOException {
