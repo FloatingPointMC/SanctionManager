@@ -16,7 +16,7 @@ import java.util.Optional;
  */
 @RequiredArgsConstructor
 public class RedisCacheService implements ICacheService {
-    private final RedisConfig config;
+    private final @NotNull RedisConfig config;
 
     @Override
     public @NotNull Optional<EntryPersisted> getById(long id) {

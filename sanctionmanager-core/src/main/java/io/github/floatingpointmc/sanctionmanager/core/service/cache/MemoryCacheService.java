@@ -1,5 +1,6 @@
 package io.github.floatingpointmc.sanctionmanager.core.service.cache;
 
+import io.github.floatingpointmc.sanctionmanager.core.config.cache.MemoryCacheConfig;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import org.jetbrains.annotations.NotNull;
 
@@ -50,7 +51,9 @@ public class MemoryCacheService implements ICacheService {
      * @param entryCapacity maximum number of entries to cache
      * @param queryCapacity maximum number of query results to cache
      */
-    public MemoryCacheService(int entryCapacity, int queryCapacity) {
+    public MemoryCacheService(@NotNull MemoryCacheConfig memoryCacheConfig) {
+        int entryCapacity = memoryCacheConfig.getEntryCapacity();
+        int queryCapacity = memoryCacheConfig.getQueryCapacity();
         if (entryCapacity <= 0) {
             throw new IllegalArgumentException("entryCapacity must be positive, got: " + entryCapacity);
         }

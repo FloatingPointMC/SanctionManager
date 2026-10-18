@@ -183,10 +183,11 @@ public interface Entry {
      * <p>
      * The returned {@code JsonObject} is a deep copy. Modifications to the returned object
      * do not affect the entry. If extended data support is disabled for this entry type,
-     * returns an empty JSON object {@code {}}.
+     * throws {@code IllegalStateException}.
      * </p>
      *
      * @return a deep copy of the extended data, never null
+     * @throws IllegalStateException if the entry does not support extended data
      */
-    @NotNull JsonObject getData();
+    @NotNull JsonObject getData() throws IllegalStateException;
 }

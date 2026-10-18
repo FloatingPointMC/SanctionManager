@@ -36,12 +36,11 @@ public class CacheService {
         if (!enabled) {
             this.cacheService = null;
         } else if (config.isUsingRedis()) {
+            assert config.getRedisConfig() != null;
             this.cacheService = new RedisCacheService(config.getRedisConfig());
         } else {
-            this.cacheService = new MemoryCacheService(
-                    config.getEntryCapacity(),
-                    config.getQueryCapacity()
-            );
+            assert config.getMemoryCacheConfig() != null;
+            this.cacheService = new MemoryCacheService(config.getMemoryCacheConfig());
         }
     }
 

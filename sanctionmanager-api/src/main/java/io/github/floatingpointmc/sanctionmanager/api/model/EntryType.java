@@ -1,7 +1,12 @@
 package io.github.floatingpointmc.sanctionmanager.api.model;
 
+import lombok.Getter;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.regex.Pattern;
+
 /**
- * Defines the type of a sanction entry.
+ * Defines the type of sanction entry.
  * <p>
  * Entry types categorize sanctions (e.g., "BAN", "MUTE"). Each type has a unique identifier
  * and optionally supports extended data in JSON format.
@@ -11,16 +16,30 @@ package io.github.floatingpointmc.sanctionmanager.api.model;
  * The identifier must match the pattern {@code [a-z][a-z0-9_]*}.
  * </p>
  */
-public interface EntryType {
+public final class EntryType {
+    private static final Pattern TYPE_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
     /**
-     * Gets the unique identifier for this entry type.
+     * unique identifier for this entry type
      * <p>
      * The identifier is case-sensitive and must match the pattern {@code [a-z][a-z0-9_]*}.
      * </p>
-     *
-     * @return the identifier, never null
      */
-    String getIdentifier();
+    @Getter
+    private final @NotNull String identifier;
+    private final boolean withExtraData;
+
+    /**
+     * Constructs an EntryTypeImpl with validation.
+     *
+     * @param identifier    the type identifier. Must match {@code [a-z][a-z0-9_]*}.
+     * @param withExtraData whether extended data support is enabled
+     * @throws IllegalArgumentException if the identifier is invalid
+     */
+    private EntryType(@NotNull String identifier, boolean withExtraData) {
+        validate(identifier);
+        this.identifier = identifier;
+        this.withExtraData = withExtraData;
+    }
 
     /**
      * Indicates whether this entry type supports extended data.
@@ -31,7 +50,37 @@ public interface EntryType {
      *
      * @return {@code true} if extended data is supported, {@code false} otherwise
      */
-    boolean withExtraData();
+    public boolean withExtraData() {
+        return withExtraData;
+    }
+
+    /**
+     * Compares two entry types by their identifiers.
+     * <p>
+     * Two entry types are equal if they have the same identifier, regardless of their
+     * extended data support setting.
+     * </p>
+     *
+     * @param obj the object to compare
+     * @return {@code true} if both are EntryType instances with the same identifier
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) return false;
+        if (this == obj) return true;
+        if (!(obj instanceof EntryType)) return false;
+        return identifier.equals(((EntryType) obj).getIdentifier());
+    }
+
+    /**
+     * Returns a hash code based on the identifier.
+     *
+     * @return hash code for this entry type
+     */
+    @Override
+    public int hashCode() {
+        return identifier.hashCode();
+    }
 
     /**
      * Creates an entry type without extended data support.
@@ -40,8 +89,8 @@ public interface EntryType {
      * @return a new EntryType instance with extended data disabled
      * @throws IllegalArgumentException if the identifier is invalid
      */
-    static EntryType of(String identifier) {
-        return new EntryTypeImpl(identifier, false);
+    public static EntryType of(String identifier) {
+        return new EntryType(identifier, false);
     }
 
     /**
@@ -52,7 +101,19 @@ public interface EntryType {
      * @return a new EntryType instance
      * @throws IllegalArgumentException if the identifier is invalid
      */
-    static EntryType of(String identifier, boolean withExtraData) {
-        return new EntryTypeImpl(identifier, withExtraData);
+    public static EntryType of(String identifier, boolean withExtraData) {
+        return new EntryType(identifier, withExtraData);
+    }
+
+    /**
+     * Validates that the identifier matches the required pattern.
+     *
+     * @param identifier the identifier to validate
+     * @throws IllegalArgumentException if the identifier is invalid
+     */
+    private static void validate(String identifier) {
+        if (!TYPE_PATTERN.matcher(identifier).matches()) {
+            throw new IllegalArgumentException("Invalid entry type: " + identifier);
+        }
     }
 }
