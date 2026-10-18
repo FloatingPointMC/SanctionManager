@@ -12,10 +12,16 @@ import java.util.Date;
 import java.util.UUID;
 
 /**
- * Internal implementation of Entry representing a persisted database record.
+ * Internal implementation of Entry representing a persisted storage record.
  * <p>
- * This class wraps persistent data retrieved from the database. It includes
- * a version field for optimistic locking during concurrent modifications.
+ * This class holds persistent data written to or read from storage. Getters for the API properties are
+ * Lombok-generated; {@code data}, {@code withdrawnBy}, {@code withdrawalReason}, {@code overridden},
+ * {@code overriddenBy} and {@code version} also have Lombok-generated setters that mutate this instance.
+ * </p>
+ * <p>
+ * The {@code version} field is carried through copies but is never incremented or checked. Neither
+ * {@code version} nor {@code overridden} is written by the binary record format; decoded records have
+ * {@code version} 0 and {@code overridden} {@code false}.
  * </p>
  */
 public class EntryPersisted implements Entry {
@@ -50,6 +56,24 @@ public class EntryPersisted implements Entry {
     @Setter
     private int version;
 
+    /**
+     * Creates a persisted entry. Arguments are stored as given, without copying or validation.
+     *
+     * @param id             the unique ID
+     * @param relId          the type-relative ID
+     * @param type           the entry type
+     * @param target         the target UUID
+     * @param executor       the executor UUID
+     * @param expiryTime     the expiry time, or null if the entry never expires
+     * @param executingTime  the time of execution
+     * @param reason         the reason, or null
+     * @param data           the extra data, or null if the type does not support extra data
+     * @param withdrawnBy    the UUID of the withdrawing user, or null if not withdrawn
+     * @param withdrawReason the withdrawal reason, or null
+     * @param overridden     whether the entry is overridden
+     * @param overriddenBy   the ID of the overriding entry, or null
+     * @param version        the version number (currently unused)
+     */
     public EntryPersisted(long id, long relId, @NotNull EntryType type, @NotNull UUID target, @NotNull UUID executor,
                           @Nullable Date expiryTime, @NotNull Date executingTime, @Nullable String reason,
                           @Nullable JsonObject data, @Nullable UUID withdrawnBy, @Nullable String withdrawReason,
@@ -70,16 +94,33 @@ public class EntryPersisted implements Entry {
         this.version = version;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns a copy of the stored date. Note that {@link #getExecutingTime()} returns the stored instance itself.
+     * </p>
+     */
     @Override
     public @Nullable Date getExpiryTime() {
         return expiryTime != null ? new Date(expiryTime.getTime()) : null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isWithdrawn() {
         return withdrawnBy != null;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns a deep copy of the stored data.
+     * </p>
+     *
+     * @throws IllegalStateException if this entry has no extra data
+     */
     @Override
     public @NotNull JsonObject getData() {
         if (data == null)
@@ -88,6 +129,11 @@ public class EntryPersisted implements Entry {
     }
 
     // Getter for internal usage
+    /**
+     * Gets the stored extra data without copying.
+     *
+     * @return the live data object, or null if this entry has no extra data
+     */
     public @Nullable JsonObject getDataInternal() {
         return data;
     }

@@ -25,6 +25,9 @@ import java.util.Objects;
  * </p>
  */
 public final class Credential implements AutoCloseable {
+    /**
+     * The username associated with this credential. Remains readable after {@link #close()}.
+     */
     @Getter
     private final String username;
     private char[] password;
@@ -36,9 +39,9 @@ public final class Credential implements AutoCloseable {
      * The password array is cloned internally; the caller's array is not modified or retained.
      * </p>
      *
-     * @param username the username. Cannot be null.
+     * @param username the username. Must not be null (annotated only; not checked at runtime).
      * @param password the password as a char array. Cannot be null. Will be cloned for storage.
-     * @throws NullPointerException if {@code username} or {@code password} is null
+     * @throws NullPointerException if {@code password} is null
      */
     public Credential(@NotNull String username, char @NotNull [] password) {
         this.username = username;
@@ -61,7 +64,7 @@ public final class Credential implements AutoCloseable {
      * @throws NullPointerException if {@code consumer} is null
      * @throws IllegalStateException if this credential has been closed
      */
-    public synchronized void usePassword(PasswordConsumer consumer) {
+    public synchronized void usePassword(@NotNull PasswordConsumer consumer) {
         Objects.requireNonNull(consumer, "consumer");
 
         if (closed) {

@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
  * Core implementation of EntryService with comprehensive cache-first query execution.
  * <p>
  * All queries use a cache-first strategy:
+ * </p>
  * <ol>
  *   <li>Check cache using a deterministic query key</li>
  *   <li>On cache hit, return cached result without accessing persistent storage</li>
@@ -32,7 +33,6 @@ import java.util.stream.Collectors;
  *   <li>Populate entry cache and query result cache after successful storage lookup</li>
  *   <li>Return result</li>
  * </ol>
- * </p>
  * <p>
  * Mutations invalidate all query result caches to ensure consistency. Individual entry caches
  * are updated or invalidated as appropriate.
@@ -43,6 +43,12 @@ public class EntryServiceCore implements EntryService {
     private final Map<String, AtomicLong> typeRelIdCounters = new ConcurrentHashMap<>();
     private final AtomicLong idCounter = new AtomicLong(0);
 
+    /**
+     * Constructs the entry service for the given Core.
+     *
+     * @param core the owning Core. Cannot be null.
+     * @throws IllegalStateException if the Core is already initialized
+     */
     public EntryServiceCore(SanctionManagerCore core) {
         if (core.isInitialized()) {
             throw new IllegalStateException("SanctionManagerCore is already initialized");
@@ -50,6 +56,7 @@ public class EntryServiceCore implements EntryService {
         this.core = core;
     }
 
+    /** {@inheritDoc} */
     @Override
     public @NotNull List<Entry> query(@NotNull UUID target, @NotNull QueryOptions options) {
         if (!core.isInitialized()) {
@@ -110,6 +117,7 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public @NotNull List<Entry> queryAll(@NotNull QueryOptions options, String @NotNull ... types) {
         if (!core.isInitialized()) {
@@ -182,6 +190,12 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The returned entry wraps the cached or stored instance directly; no defensive copy is made.
+     * </p>
+     */
     @Override
     public @NotNull Optional<Entry> queryLatestActive(@NotNull UUID target, String @NotNull ... types) {
         if (!core.isInitialized()) {
@@ -247,6 +261,12 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The returned entry wraps the cached or stored instance directly; no defensive copy is made.
+     * </p>
+     */
     @Override
     public @NotNull Optional<Entry> queryById(long id) {
         if (!core.isInitialized()) {
@@ -276,6 +296,12 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The returned entry wraps the cached or stored instance directly; no defensive copy is made.
+     * </p>
+     */
     @Override
     public @NotNull Optional<Entry> queryByTypeAndRelId(@NotNull String type, long relId) {
         if (!core.isInitialized()) {
@@ -313,6 +339,14 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The relation ID is taken from a per-type counter held in memory by this service instance. The counters
+     * start at zero for each new instance and are not restored from storage, so relation IDs may repeat
+     * after a restart. The entry ID is assigned by the storage backend.
+     * </p>
+     */
     @Override
     public void execute(@NotNull Entry entry) {
         if (!core.isInitialized()) {
@@ -381,6 +415,13 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The given {@code newData} object is stored without copying, and the entry type's extended data
+     * support is not checked.
+     * </p>
+     */
     @Override
     public void updateData(@NotNull Entry entry, @NotNull JsonObject newData) {
         if (!core.isInitialized()) {
@@ -440,6 +481,7 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void withdraw(@NotNull Entry entry, @NotNull UUID withdrawnBy, @Nullable String withdrawReason) {
         if (!core.isInitialized()) {
@@ -499,6 +541,7 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void updateWithdrawReason(@NotNull Entry entry, @Nullable String withdrawReason) {
         if (!core.isInitialized()) {
@@ -557,6 +600,12 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Clearing {@code overriddenBy} references scans all entries in storage.
+     * </p>
+     */
     @Override
     public void delete(@NotNull String type, long relId) {
         if (!core.isInitialized()) {
@@ -600,6 +649,7 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void delete(long id) {
         if (!core.isInitialized()) {

@@ -21,7 +21,7 @@ import java.util.*;
  * Core implementation of SanctionManager.
  * <p>
  * This class manages the lifecycle of the sanction management system and provides access
- * to entry factory and manager services.
+ * to the entry factory, entry service, storage service, and cache service.
  * </p>
  */
 public class SanctionManagerCore implements SanctionManager {
@@ -30,18 +30,24 @@ public class SanctionManagerCore implements SanctionManager {
     private final @NotNull StorageService storageService;
     private final @NotNull CacheService cacheService;
     private @Nullable TypeManager typeManager;
+    /**
+     * The configuration this Core was created with.
+     */
     @Getter
     private final @NotNull CoreConfig config;
 
     private final ArrayList<EntryType> entryTypes = new ArrayList<>();
     /**
-     * Checks if the Core is initialized.
+     * Whether the Core is currently initialized. Set by {@link #initialize()} and cleared by {@link #shutdown()}.
      */
     @Getter
     private boolean initialized = false;
 
     /**
-     * Creates a new SanctionManagerCore instance.
+     * Creates a new SanctionManagerCore instance and constructs its services.
+     *
+     * @param config the Core configuration
+     * @throws IllegalArgumentException if the cache configuration is invalid (see {@link CacheService})
      */
     private SanctionManagerCore(@NotNull CoreConfig config) {
         this.config = config;
@@ -58,14 +64,25 @@ public class SanctionManagerCore implements SanctionManager {
      * to register entry types, then call {@link #initialize()} to activate the Core.
      * </p>
      *
-     * @param config the Core configuration
+     * @param config the Core configuration. Cannot be null.
      * @return a new uninitialized Core instance
+     * @throws NullPointerException if {@code config} is null
+     * @throws IllegalArgumentException if the cache configuration is invalid (see {@link CacheService})
      */
     public static SanctionManagerCore create(@NotNull CoreConfig config) {
         Objects.requireNonNull(config, "config cannot be null");
         return new SanctionManagerCore(config);
     }
 
+    /**
+     * Replaces the list of entry types to register on {@link #initialize()}.
+     *
+     * @param types the entry types. Cannot be null and must not contain null or duplicate elements.
+     * @return this Core, for chaining
+     * @throws IllegalStateException if the Core is currently initialized
+     * @throws NullPointerException if {@code types} or any element is null
+     * @throws IllegalArgumentException if {@code types} contains duplicates (compared by identifier)
+     */
     public SanctionManagerCore types(EntryType @NotNull ... types) {
         validateTypes(types, Collections.emptyList());
         entryTypes.clear();
@@ -73,6 +90,19 @@ public class SanctionManagerCore implements SanctionManager {
         return this;
     }
 
+    /**
+     * Appends entry types to the list of types to register on {@link #initialize()}.
+     * <p>
+     * Duplicates are only detected within the given array; types added by earlier calls are not
+     * compared. If an identifier ends up registered more than once, the last occurrence is used.
+     * </p>
+     *
+     * @param types the entry types to add. Cannot be null and must not contain null or duplicate elements.
+     * @return this Core, for chaining
+     * @throws IllegalStateException if the Core is currently initialized
+     * @throws NullPointerException if {@code types} or any element is null
+     * @throws IllegalArgumentException if {@code types} itself contains duplicates (compared by identifier)
+     */
     public SanctionManagerCore addTypes(EntryType @NotNull ... types) {
         validateTypes(types, Collections.emptyList());
         entryTypes.addAll(Arrays.asList(types));
@@ -82,11 +112,14 @@ public class SanctionManagerCore implements SanctionManager {
     /**
      * Initializes the Core and registers it as the active API instance.
      * <p>
-     * This method must be called before using any services. It registers this Core
-     * with the global {@code SanctionManagerAPI}.
+     * This method must be called before using any services. It builds the {@link TypeManager} from the
+     * registered types, initializes storage, and registers this Core with the global {@code SanctionManagerAPI}.
      * </p>
      *
      * @throws IllegalStateException if the Core has already been initialized
+     * @throws UnsupportedOperationException if database storage is configured (not implemented)
+     * @throws IllegalArgumentException if the binary file configuration is invalid
+     * @throws RuntimeException if storage initialization fails
      */
     public void initialize() {
         synchronized (this) {
@@ -104,7 +137,8 @@ public class SanctionManagerCore implements SanctionManager {
     /**
      * Shuts down the Core and clears the active API instance.
      * <p>
-     * After shutdown, all services will throw {@code IllegalStateException}.
+     * After shutdown, service operations throw {@code IllegalStateException}. The storage backend is
+     * currently not shut down by this method, so open storage resources are not released.
      * </p>
      */
     public void shutdown() {
@@ -115,6 +149,11 @@ public class SanctionManagerCore implements SanctionManager {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalStateException if the Core is not initialized
+     */
     @Override
     public @NotNull EntryService getEntryService() {
         if (!initialized) {
@@ -123,6 +162,11 @@ public class SanctionManagerCore implements SanctionManager {
         return entryService;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalStateException if the Core is not initialized
+     */
     @Override
     public @NotNull EntryFactory getEntryFactory() {
         if (!initialized) {
@@ -131,6 +175,12 @@ public class SanctionManagerCore implements SanctionManager {
         return entryFactory;
     }
 
+    /**
+     * Gets the storage service facade.
+     *
+     * @return the storage service
+     * @throws IllegalStateException if the Core is not initialized
+     */
     public @NotNull StorageService getStorageService() {
         if (!initialized) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
@@ -138,10 +188,24 @@ public class SanctionManagerCore implements SanctionManager {
         return storageService;
     }
 
+    /**
+     * Gets the cache service. Unlike the other service getters, this does not check initialization.
+     *
+     * @return the cache service
+     */
     public @NotNull CacheService getCacheService() {
         return cacheService;
     }
 
+    /**
+     * Gets the type manager built by the most recent call to {@link #initialize()}.
+     * <p>
+     * The type manager remains available after {@link #shutdown()}.
+     * </p>
+     *
+     * @return the type manager
+     * @throws IllegalStateException if {@link #initialize()} has never been called
+     */
     public @NotNull TypeManager getTypeManager() {
         if (typeManager == null) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");

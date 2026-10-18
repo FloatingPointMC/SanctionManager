@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 /**
  * Defines the type of sanction entry.
  * <p>
- * Entry types categorize sanctions (e.g., "BAN", "MUTE"). Each type has a unique identifier
+ * Entry types categorize sanctions (e.g., "ban", "mute"). Each type has a unique identifier
  * and optionally supports extended data in JSON format.
  * </p>
  * <p>
@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public final class EntryType {
     private static final Pattern TYPE_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
     /**
-     * unique identifier for this entry type
+     * Unique identifier for this entry type.
      * <p>
      * The identifier is case-sensitive and must match the pattern {@code [a-z][a-z0-9_]*}.
      * </p>
@@ -29,7 +29,7 @@ public final class EntryType {
     private final boolean withExtraData;
 
     /**
-     * Constructs an EntryTypeImpl with validation.
+     * Constructs an EntryType with validation.
      *
      * @param identifier    the type identifier. Must match {@code [a-z][a-z0-9_]*}.
      * @param withExtraData whether extended data support is enabled
@@ -88,8 +88,9 @@ public final class EntryType {
      * @param identifier the type identifier. Must be non-empty and match {@code [a-z][a-z0-9_]*}.
      * @return a new EntryType instance with extended data disabled
      * @throws IllegalArgumentException if the identifier is invalid
+     * @throws NullPointerException if {@code identifier} is null
      */
-    public static EntryType of(String identifier) {
+    public static EntryType of(@NotNull String identifier) {
         return new EntryType(identifier, false);
     }
 
@@ -100,8 +101,9 @@ public final class EntryType {
      * @param withExtraData {@code true} to enable extended data support, {@code false} to disable it
      * @return a new EntryType instance
      * @throws IllegalArgumentException if the identifier is invalid
+     * @throws NullPointerException if {@code identifier} is null
      */
-    public static EntryType of(String identifier, boolean withExtraData) {
+    public static EntryType of(@NotNull String identifier, boolean withExtraData) {
         return new EntryType(identifier, withExtraData);
     }
 
@@ -111,7 +113,7 @@ public final class EntryType {
      * @param identifier the identifier to validate
      * @throws IllegalArgumentException if the identifier is invalid
      */
-    private static void validate(String identifier) {
+    private static void validate(@NotNull String identifier) {
         if (!TYPE_PATTERN.matcher(identifier).matches()) {
             throw new IllegalArgumentException("Invalid entry type: " + identifier);
         }

@@ -11,7 +11,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Main storage engine implementing page-based binary file persistence.
- * Manages pages, records, and B+ tree indexes.
+ * Manages pages and records. Lookup indexes (by ID, by type and relId, and by target) are kept only in
+ * memory; they are not persisted and are rebuilt by scanning all data pages when an existing file is opened.
+ * <p>
+ * Records are decoded with a {@link RecordCodec} whose type-ID mapping is held in memory only, so records
+ * written by a previous engine instance may fail to decode after a restart.
+ * </p>
+ * <p>
+ * All operations except construction require {@link #initialize()} to have completed first.
+ * </p>
  */
 @Slf4j
 public class StorageEngine {
@@ -25,11 +33,31 @@ public class StorageEngine {
     private final Map<String, Map<Long, EntryRecordLocation>> typeRelIndex = new ConcurrentHashMap<>(); // type -> (relId -> location)
     private final Map<UUID, List<EntryRecordLocation>> targetIndex = new ConcurrentHashMap<>(); // target UUID -> list of locations
 
+    /**
+     * Creates a storage engine. No file is opened until {@link #initialize()} is called.
+     *
+     * @param filePath       path to the storage file
+     * @param pageSize       page size in bytes
+     * @param maxCachedPages maximum number of pages held in the page cache
+     * @param typeManager    type manager used to resolve entry types when decoding records
+     * @throws IOException declared but not thrown by the current implementation
+     */
     public StorageEngine(Path filePath, int pageSize, int maxCachedPages, TypeManager typeManager) throws IOException {
         this.pageManager = new PageManager(filePath, pageSize, maxCachedPages);
         this.recordCodec = new RecordCodec(typeManager);
     }
 
+    /**
+     * Opens the storage file, creating it if it does not exist.
+     * <p>
+     * An empty file is initialized with a new superblock. For an existing file, the superblock is read and the
+     * in-memory indexes are rebuilt by scanning all pages; pages and records that cannot be read or decoded are
+     * skipped and logged.
+     * </p>
+     *
+     * @throws IOException if the file cannot be opened, read, or written
+     * @throws StorageException if the superblock is invalid (bad magic, version, page size, page count, or CRC)
+     */
     public void initialize() throws IOException {
         pageManager.initialize();
 
@@ -138,6 +166,18 @@ public class StorageEngine {
         return pageType == 1; // Data page type
     }
 
+    /**
+     * Inserts a record and assigns it a new ID.
+     * <p>
+     * The ID of the given entry is ignored; the record is stored with the next ID from the superblock and with
+     * version 0. The given entry object is not modified.
+     * </p>
+     *
+     * @param entry the entry to insert
+     * @return the assigned ID
+     * @throws IOException if writing to the file fails
+     * @throws StorageException if the encoded record is too large for a page
+     */
     public long insertRecord(EntryPersisted entry) throws IOException {
         // Assign ID
         long id = superblock.nextEntryId++;
@@ -163,6 +203,14 @@ public class StorageEngine {
         return id;
     }
 
+    /**
+     * Reads a record by ID.
+     *
+     * @param id the record ID
+     * @return the decoded record, or empty if the ID is not in the primary index
+     * @throws IOException if reading the file fails
+     * @throws StorageException if the record cannot be decoded
+     */
     public Optional<EntryPersisted> getRecord(long id) throws IOException {
         EntryRecordLocation location = primaryIndex.get(id);
         if (location == null) {
@@ -171,6 +219,16 @@ public class StorageEngine {
         return Optional.of(readRecord(location));
     }
 
+    /**
+     * Reads all records indexed for the given target.
+     * <p>
+     * Records that cannot be read are logged and omitted from the result.
+     * </p>
+     *
+     * @param target the target UUID
+     * @return the matching records (may be empty)
+     * @throws IOException declared but read failures are caught and logged
+     */
     public List<EntryPersisted> queryByTarget(UUID target) throws IOException {
         List<EntryRecordLocation> locations = targetIndex.getOrDefault(target, new ArrayList<>());
         List<EntryPersisted> results = new ArrayList<>();
@@ -184,6 +242,17 @@ public class StorageEngine {
         return results;
     }
 
+    /**
+     * Reads the record indexed for the given type identifier and relId.
+     * <p>
+     * If the record cannot be read, the failure is logged and an empty list is returned.
+     * </p>
+     *
+     * @param typeId the type identifier
+     * @param relId  the type-relative ID
+     * @return a list containing at most one record
+     * @throws IOException declared but read failures are caught and logged
+     */
     public List<EntryPersisted> queryByTypeAndRelId(String typeId, long relId) throws IOException {
         Map<Long, EntryRecordLocation> typeMap = typeRelIndex.getOrDefault(typeId, new HashMap<>());
         EntryRecordLocation location = typeMap.get(relId);
@@ -200,6 +269,13 @@ public class StorageEngine {
         }
     }
 
+    /**
+     * Replaces the stored record that has the same ID as the given entry, and updates the indexes.
+     *
+     * @param entry the new record content; its ID selects the record to replace
+     * @throws IOException if reading or writing the file fails
+     * @throws StorageException if no record with the entry's ID exists, or the record cannot be read or written
+     */
     public void updateRecord(EntryPersisted entry) throws IOException {
         // Find existing location
         EntryRecordLocation location = primaryIndex.get(entry.getId());
@@ -226,6 +302,16 @@ public class StorageEngine {
         persistSuperblock();
     }
 
+    /**
+     * Deletes a record by ID by marking its slot free and removing it from the indexes.
+     * <p>
+     * Does nothing if no record with the given ID exists.
+     * </p>
+     *
+     * @param id the record ID
+     * @throws IOException if reading or writing the file fails
+     * @throws StorageException if the record cannot be read
+     */
     public void deleteRecord(long id) throws IOException {
         EntryRecordLocation location = primaryIndex.remove(id);
         if (location == null) {
@@ -301,28 +387,58 @@ public class StorageEngine {
         pageManager.force();
     }
 
+    /**
+     * Writes the superblock and closes the storage file.
+     *
+     * @throws IOException if writing or closing the file fails
+     */
     public void shutdown() throws IOException {
         persistSuperblock();
         pageManager.shutdown();
     }
 
+    /**
+     * Gets the in-memory superblock. The returned object is live, not a copy.
+     *
+     * @return the superblock, or null if {@link #initialize()} has not run
+     */
     public Superblock getSuperblock() {
         return superblock;
     }
 
+    /**
+     * Gets the primary index (record ID to location).
+     *
+     * @return an unmodifiable view of the primary index; it reflects later changes
+     */
     public Map<Long, EntryRecordLocation> getPrimaryIndex() {
         return Collections.unmodifiableMap(primaryIndex);
     }
 
     /**
      * Internal class to track record location in the file.
+     * <p>
+     * Does not override {@code equals}/{@code hashCode}; instances are compared by identity.
+     * </p>
      */
     public static class EntryRecordLocation {
+        /** ID of the data page containing the record. */
         public final long pageId;
+        /** Index of the record's slot in the page's slot directory. */
         public final int slotIndex;
+        /** Slot generation; currently always written as 0. */
         public final short slotGeneration;
+        /** Page generation; currently always 0. */
         public final int pageGeneration;
 
+        /**
+         * Creates a record location.
+         *
+         * @param pageId         the data page ID
+         * @param slotIndex      the slot index within the page
+         * @param slotGeneration the slot generation
+         * @param pageGeneration the page generation
+         */
         public EntryRecordLocation(long pageId, int slotIndex, short slotGeneration, int pageGeneration) {
             this.pageId = pageId;
             this.slotIndex = slotIndex;

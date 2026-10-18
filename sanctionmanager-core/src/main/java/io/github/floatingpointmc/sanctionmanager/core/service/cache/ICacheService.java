@@ -10,11 +10,14 @@ import java.util.Optional;
  * Interface for cache service implementations.
  * <p>
  * Provides two-tier caching:
+ * </p>
  * <ul>
  *   <li><b>Entry cache</b>: Stores individual EntryPersisted objects indexed by ID and (type, relId)</li>
  *   <li><b>Query result cache</b>: Stores lists of entry IDs for complex queries</li>
  * </ul>
- * Both caches are bounded with LRU eviction. Query results are valid only if all referenced entries
+ * <p>
+ * Eviction and bounding are implementation-dependent; {@link MemoryCacheService} uses bounded LRU caches,
+ * while {@link RedisCacheService} is not implemented. Query results are valid only if all referenced entries
  * can be resolved from the entry cache.
  * </p>
  */

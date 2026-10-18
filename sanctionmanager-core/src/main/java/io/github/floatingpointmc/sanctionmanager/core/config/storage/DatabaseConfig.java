@@ -10,6 +10,10 @@ import org.jetbrains.annotations.NotNull;
  * <p>
  * Specifies the JDBC connection string and credentials for connecting to the persistence database.
  * </p>
+ * <p>
+ * Note: database storage is not implemented. Selecting it causes Core initialization to fail with
+ * {@code UnsupportedOperationException}.
+ * </p>
  */
 @RequiredArgsConstructor
 @Getter

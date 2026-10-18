@@ -41,11 +41,12 @@ public final class SanctionManagerAPI {
     /**
      * Internal: Sets the active SanctionManager instance.
      * <p>
-     * This method is called by the Core implementation during initialization.
+     * This method is called by the Core implementation during initialization. It replaces any
+     * previously active instance. No null check is performed; passing {@code null} has the same
+     * effect as {@link #clearApi()}.
      * </p>
      *
      * @param manager the SanctionManager to activate
-     * @throws NullPointerException if {@code manager} is null
      */
     public static void setApi(@NotNull SanctionManager manager) {
         instance = manager;

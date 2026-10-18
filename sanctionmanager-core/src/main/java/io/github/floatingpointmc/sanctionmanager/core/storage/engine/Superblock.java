@@ -2,7 +2,12 @@ package io.github.floatingpointmc.sanctionmanager.core.storage.engine;
 
 /**
  * In-memory representation of the superblock (page 0).
- * Contains file-level metadata and root page IDs for B+ tree indexes.
+ * Contains file-level metadata. The format also reserves root page IDs for persistent indexes, a free-page
+ * list head and WAL positions, but these are not used: no persistent indexes, free-page list or WAL exist,
+ * and these fields keep their initial values.
+ * <p>
+ * All fields are public and mutable.
+ * </p>
  */
 public class Superblock {
     private static final String MAGIC = "SMBFILE1";
@@ -10,17 +15,32 @@ public class Superblock {
     private static final int HEADER_SIZE = 96;
 
     // Superblock fields
+    /** File generation counter. Currently never changed from 0. */
     public long fileGeneration;
+    /** Number of pages in use, including the superblock page. Incremented when a data page is allocated. */
     public long filePageCount;
+    /** ID to assign to the next inserted record. */
     public long nextEntryId;
+    /** Reserved root page ID for a persistent primary index; unused (-1). */
     public long recordRootPageId;
+    /** Reserved root page ID for a persistent type/relId index; unused (-1). */
     public long typeRelRootPageId;
+    /** Reserved root page ID for a persistent target index; unused (-1). */
     public long targetRootPageId;
+    /** Reserved head of a free-page list; unused (-1). */
     public long freePageHead;
+    /** Reserved WAL checkpoint position; unused (0). */
     public long walCheckpointLsn;
+    /** Reserved committed WAL position; unused (0). */
     public long committedLsn;
+    /** Reserved flags; unused (0). */
     public int flags;
 
+    /**
+     * Creates a superblock for a new, empty file.
+     *
+     * @return a superblock with one page, next entry ID 1, and reserved fields at their initial values
+     */
     public static Superblock createEmpty() {
         Superblock sb = new Superblock();
         sb.fileGeneration = 0;
@@ -36,6 +56,14 @@ public class Superblock {
         return sb;
     }
 
+    /**
+     * Decodes a superblock from page bytes.
+     *
+     * @param data     the page bytes
+     * @param pageSize the expected page size
+     * @return the decoded superblock
+     * @throws StorageException if the magic, format version, page size, page count or CRC is invalid
+     */
     public static Superblock fromBytes(byte[] data, int pageSize) throws StorageException {
         PageBuffer buf = new PageBuffer(data);
 
@@ -86,6 +114,13 @@ public class Superblock {
         return sb;
     }
 
+    /**
+     * Encodes this superblock into the given buffer and zero-fills the rest of it.
+     *
+     * @param data     the destination buffer, normally one page
+     * @param pageSize the page size to record
+     * @throws StorageException if {@code data} is smaller than the superblock header
+     */
     public void toBytes(byte[] data, int pageSize) throws StorageException {
         if (data.length < HEADER_SIZE) {
             throw new StorageException("Superblock buffer too small");

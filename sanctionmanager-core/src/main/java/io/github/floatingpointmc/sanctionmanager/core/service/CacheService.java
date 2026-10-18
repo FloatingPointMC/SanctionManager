@@ -18,17 +18,29 @@ import java.util.Optional;
  * Wrapper for cache service implementations.
  * <p>
  * Provides a unified interface for caching operations with automatic no-op behavior when caching is disabled.
- * Supports both entry-level caching and query result caching with bounded LRU eviction.
+ * Supports both entry-level caching and query result caching. Eviction behavior depends on the
+ * selected implementation; the in-memory implementation uses bounded LRU eviction.
  * </p>
  */
 public class CacheService {
     /**
-     *  Checks if caching is enabled.
+     * Whether caching is enabled. When {@code false}, all operations are no-ops and lookups return empty.
      */
     @Getter
     private final boolean enabled;
     private final ICacheService cacheService;
 
+    /**
+     * Constructs a CacheService from the Core's cache configuration.
+     * <p>
+     * If caching is disabled, no backend is created. If Redis is selected, a {@link RedisCacheService} is
+     * created; it is not implemented and every cache operation throws {@code UnsupportedOperationException}.
+     * Otherwise a {@link MemoryCacheService} is created.
+     * </p>
+     *
+     * @param core the Core instance whose configuration is read. Cannot be null.
+     * @throws IllegalArgumentException if the memory cache is selected and its capacities are not positive
+     */
     public CacheService(SanctionManagerCore core) {
         CacheConfig config = core.getConfig().getCacheConfig();
         this.enabled = config.isEnabled();

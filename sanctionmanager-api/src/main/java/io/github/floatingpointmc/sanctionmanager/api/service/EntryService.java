@@ -15,7 +15,7 @@ import java.util.UUID;
 /**
  * Interface for managing persisted sanction entries.
  * <p>
- * {@code EntryManager} provides methods for persisting new entries, querying existing entries,
+ * {@code EntryService} provides methods for persisting new entries, querying existing entries,
  * and modifying entry state (withdrawal, data updates, deletion).
  * </p>
  * <p>
@@ -23,9 +23,15 @@ import java.util.UUID;
  * is not initialized or has been shut down.
  * </p>
  * <p>
- * <strong>Concurrency:</strong> Multiple threads may call {@code EntryManager} methods concurrently.
- * For mutating operations on the same Entry, optimistic locking ensures consistency. Conflicts are reported
- * via {@code ConcurrentDataModificationException} (for data conflicts) or other appropriate exceptions.
+ * <strong>Concurrency:</strong> This interface does not define a concurrency contract. Optimistic locking
+ * and {@link io.github.floatingpointmc.sanctionmanager.api.exceptions.ConcurrentDataModificationException}
+ * are reserved for future use; the current Core implementation does not perform version checks and does not
+ * throw that exception.
+ * </p>
+ * <p>
+ * <strong>Type validation:</strong> Type identifiers passed to query and delete methods are checked for
+ * {@code null} and blank values. The current Core implementation does not reject identifiers that are not
+ * registered; such queries simply match no entries.
  * </p>
  */
 public interface EntryService {
@@ -52,11 +58,12 @@ public interface EntryService {
      * </p>
      *
      * @param options the query options controlling state filtering and other criteria. Cannot be null.
-     * @param types   the types to include in the query. Each type must be non-empty and registered.
-     *                Duplicate types are automatically deduplicated.
+     * @param types   the types to include in the query. Each type must be non-null and non-blank.
+     *                Duplicate types are automatically deduplicated. An empty array applies no
+     *                varargs type restriction; any types set in {@code options} still apply.
      * @return an immutable list of matching entries, possibly empty
-     * @throws NullPointerException if {@code options} or any type is null
-     * @throws IllegalArgumentException if any type is empty, unregistered, or has invalid format
+     * @throws NullPointerException if {@code options}, {@code types}, or any type is null
+     * @throws IllegalArgumentException if any type is blank
      * @throws IllegalStateException if the Core is not initialized or has been shut down
      */
     @NotNull List<Entry> queryAll(@NotNull QueryOptions options, String @NotNull ... types);
@@ -70,10 +77,10 @@ public interface EntryService {
      * </p>
      *
      * @param target the target UUID. Cannot be null.
-     * @param types  the types to check. Each must be non-empty and registered. Duplicates are deduplicated.
+     * @param types  the types to check. Each must be non-null and non-blank. Duplicates are deduplicated.
      * @return the latest active entry, or {@code Optional.empty()} if none exist
-     * @throws NullPointerException if {@code target} or any type is null
-     * @throws IllegalArgumentException if any type is empty, unregistered, or has invalid format, or if types array is empty
+     * @throws NullPointerException if {@code target}, {@code types}, or any type is null
+     * @throws IllegalArgumentException if any type is blank, or if the types array is empty
      * @throws IllegalStateException if the Core is not initialized or has been shut down
      */
     @NotNull Optional<Entry> queryLatestActive(@NotNull UUID target, String @NotNull ... types);
@@ -96,11 +103,11 @@ public interface EntryService {
      * Returns the entry regardless of its state.
      * </p>
      *
-     * @param type  the entry type. Cannot be null, must be non-empty and registered.
+     * @param type  the entry type. Cannot be null or blank.
      * @param relId the relation ID
      * @return the entry, or {@code Optional.empty()} if not found
      * @throws NullPointerException if {@code type} is null
-     * @throws IllegalArgumentException if {@code type} is empty, unregistered, or has invalid format
+     * @throws IllegalArgumentException if {@code type} is blank
      * @throws IllegalStateException if the Core is not initialized or has been shut down
      */
     @NotNull Optional<Entry> queryByTypeAndRelId(@NotNull String type, long relId);
@@ -108,14 +115,14 @@ public interface EntryService {
     /**
      * Executes (persists) a pending entry.
      * <p>
-     * This method persists the entry to the database and assigns it a unique ID and relation ID.
+     * This method persists the entry to the configured storage and assigns it a unique ID and relation ID.
      * Upon successful persistence, the entry object transitions to a persisted state. The original
      * wrapper object continues to be used and its fields become accessible.
      * </p>
      * <p>
-     * <strong>Overriding:</strong> If the new entry is not expired, it may override previous Active entries
-     * of compatible types, according to application-specific override rules. Overridden entries are marked
-     * with the permanent {@code OVERRIDDEN} flag. All database changes occur atomically.
+     * <strong>Overriding:</strong> Automatic overriding of previous entries is reserved for future use.
+     * The current Core implementation does not mark any existing entry as overridden when a new entry is
+     * executed, and does not provide transactional atomicity across multiple records.
      * </p>
      *
      * @param entry the pending Entry to persist. Must have been created via
@@ -132,20 +139,17 @@ public interface EntryService {
     /**
      * Updates the extended data of an entry.
      * <p>
-     * The provided {@code newData} must be a complete JSON object (not a patch).
-     * Modifications to the returned data use optimistic locking: if another thread modifies the entry
-     * concurrently, a {@code ConcurrentDataModificationException} is thrown and the original Entry remains unchanged.
+     * The provided {@code newData} must be a complete JSON object (not a patch); it replaces the
+     * existing data. If storage is updated successfully, the given {@code entry} object reflects the new data.
+     * No optimistic locking is performed by the current Core implementation.
      * </p>
      *
      * @param entry   the Entry to update. Must be a persisted entry from this Core's queries and must not be withdrawn.
      * @param newData the new extended data as a JSON object. Cannot be null. {@code {}} clears all extended data.
-     *                Top-level JSON null, arrays, and scalars are rejected.
      * @throws NullPointerException if {@code entry} or {@code newData} is null
-     * @throws IllegalArgumentException if {@code entry} was not created by this Core or is not persisted, or if {@code newData} is not a valid JSON object
-     * @throws IllegalStateException if the entry is withdrawn, extended data is not enabled for this type,
-     *                                or if the Core is not initialized or has been shut down
-     * @throws EntryNotFoundException if the entry has been physically deleted from the database
-     * @throws RuntimeException if persistence, transaction, or optimistic locking operations fail
+     * @throws IllegalArgumentException if {@code entry} was not created by this Core or is not persisted
+     * @throws IllegalStateException if the entry is withdrawn, or if the Core is not initialized or has been shut down
+     * @throws RuntimeException if the storage operation fails
      */
     void updateData(@NotNull Entry entry, @NotNull JsonObject newData);
 
@@ -162,8 +166,7 @@ public interface EntryService {
      * @throws NullPointerException if {@code entry} or {@code withdrawnBy} is null
      * @throws IllegalArgumentException if {@code entry} was not created by this Core or is not persisted
      * @throws IllegalStateException if the entry has already been withdrawn, or if the Core is not initialized or has been shut down
-     * @throws EntryNotFoundException if the entry has been physically deleted from the database
-     * @throws RuntimeException if persistence or transaction operations fail
+     * @throws RuntimeException if the storage operation fails, including when the entry no longer exists in storage
      */
     void withdraw(@NotNull Entry entry, @NotNull UUID withdrawnBy, @Nullable String withdrawReason);
 
@@ -178,8 +181,7 @@ public interface EntryService {
      * @throws NullPointerException if {@code entry} is null
      * @throws IllegalArgumentException if {@code entry} was not created by this Core or is not persisted
      * @throws IllegalStateException if the entry has not been withdrawn, or if the Core is not initialized or has been shut down
-     * @throws EntryNotFoundException if the entry has been physically deleted from the database
-     * @throws RuntimeException if persistence or transaction operations fail
+     * @throws RuntimeException if the storage operation fails, including when the entry no longer exists in storage
      */
     void updateWithdrawReason(@NotNull Entry entry, @Nullable String withdrawReason);
 
@@ -191,10 +193,10 @@ public interface EntryService {
      * active status or reconstruct override chains.
      * </p>
      *
-     * @param type  the entry type. Cannot be null, must be non-empty and registered.
+     * @param type  the entry type. Cannot be null or blank.
      * @param relId the relation ID
      * @throws NullPointerException if {@code type} is null
-     * @throws IllegalArgumentException if {@code type} is empty, unregistered, or has invalid format
+     * @throws IllegalArgumentException if {@code type} is blank
      * @throws IllegalStateException if the Core is not initialized or has been shut down
      * @throws EntryNotFoundException if no entry with the given type and relation ID exists
      * @throws RuntimeException if deletion or transaction operations fail

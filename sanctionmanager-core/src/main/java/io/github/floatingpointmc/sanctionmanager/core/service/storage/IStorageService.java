@@ -10,16 +10,19 @@ import java.util.UUID;
 /**
  * Interface for storage layer implementations.
  * <p>
- * Concrete implementations handle persistence via database or binary file storage.
- * All methods may throw IOException for storage-level errors.
+ * Concrete implementations handle persistence via binary file storage; the database implementation
+ * is not yet implemented. Methods may throw {@code IOException} for storage-level errors, and
+ * implementations may also throw unchecked exceptions (for example
+ * {@link io.github.floatingpointmc.sanctionmanager.core.storage.engine.StorageException}, which extends
+ * {@code RuntimeException}, or {@code UnsupportedOperationException}).
  * </p>
  */
 public interface IStorageService {
     /**
      * Initializes the storage implementation.
      * <p>
-     * This method sets up the persistence layer, such as creating database connections,
-     * initializing file resources, or preparing schemas.
+     * This method sets up the persistence layer, such as opening file resources.
+     * Implementations report failures with unchecked exceptions.
      * </p>
      */
     void initialize();

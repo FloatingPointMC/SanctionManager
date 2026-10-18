@@ -9,6 +9,10 @@ import java.util.List;
 /**
  * Manages data pages including slot allocation, record insertion, and page compaction.
  * Implements slotted page layout with forward-growing slot directory and backward-growing record area.
+ * <p>
+ * The constructor is Lombok-generated and takes the page manager and the superblock, whose
+ * {@code filePageCount} is incremented when a new page is allocated.
+ * </p>
  */
 @RequiredArgsConstructor
 public class DataPageManager {
@@ -24,6 +28,11 @@ public class DataPageManager {
     /**
      * Inserts a record into an available data page.
      * Creates a new page if necessary.
+     *
+     * @param recordBytes the encoded record
+     * @return the location of the inserted record
+     * @throws IOException if reading or writing pages fails
+     * @throws StorageException if the record is larger than the maximum record size for the page size
      */
     public StorageEngine.EntryRecordLocation insertRecord(byte[] recordBytes) throws IOException {
         if (recordBytes.length > getMaxRecordSize()) {
@@ -112,9 +121,16 @@ public class DataPageManager {
 
     /**
      * Updates a record in a data page.
-     * If the record doesn't fit in its current location, it's relocated.
+     * <p>
+     * If the new record has the same length, it is overwritten in place. Otherwise the old slot is freed and
+     * the record is reinserted into the same page (compacting it if needed); it is never moved to another page.
+     * The implementation does not check that the record fits after compaction.
+     * </p>
      *
+     * @param location       the current location of the record
+     * @param newRecordBytes the new encoded record
      * @return the location of the updated record (may be different from input location)
+     * @throws IOException if reading or writing pages fails
      */
     public StorageEngine.EntryRecordLocation updateRecord(StorageEngine.EntryRecordLocation location, byte[] newRecordBytes) throws IOException {
         byte[] pageData = pageManager.readPage(location.pageId);
@@ -144,7 +160,10 @@ public class DataPageManager {
     }
 
     /**
-     * Deletes a record by marking its slot as free.
+     * Deletes a record by marking its slot as free. The record bytes are not cleared.
+     *
+     * @param location the location of the record
+     * @throws IOException if reading or writing the page fails
      */
     public void deleteRecord(StorageEngine.EntryRecordLocation location) throws IOException {
         byte[] pageData = pageManager.readPage(location.pageId);

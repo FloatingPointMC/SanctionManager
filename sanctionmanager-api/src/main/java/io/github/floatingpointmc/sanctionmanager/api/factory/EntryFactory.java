@@ -29,19 +29,22 @@ public interface EntryFactory {
      * {@link EntryService#execute(Entry)} with the returned entry.
      * </p>
      *
-     * @param type      the entry type (e.g., "BAN", "MUTE"). Cannot be null, must be non-empty and registered with the Core.
+     * @param type      the entry type identifier (e.g., "ban", "mute"). Cannot be null. Leading and trailing
+     *                  whitespace is trimmed; the result must be non-empty and registered with the Core.
      * @param target    the UUID of the target player or entity. Cannot be null.
      * @param executor  the UUID of the player or system issuing the sanction. Cannot be null.
      * @param reason    the reason for the sanction. May be null.
      * @param duration  the duration of the sanction. {@code null} means permanent (never expires).
      *                  {@code Duration.ZERO} means immediate expiration. Negative durations are rejected.
-     * @param data      extended data as a JSON object. May be null, which defaults to an empty object.
-     *                  If provided, the object is stored as-is; modifications to the original do not affect the entry.
+     * @param data      extended data as a JSON object. Must be non-null if and only if the type
+     *                  {@linkplain io.github.floatingpointmc.sanctionmanager.api.model.EntryType#withExtraData() supports extended data}.
+     *                  The object is not copied at creation time; callers should not modify it afterward.
      *
      * @return a new pending Entry instance
-     * @throws NullPointerException if {@code type}, {@code target}, or {@code executor} is null, or data is null when extra data is required
-     * @throws IllegalArgumentException if type is empty, unregistered, or has invalid format, or if duration is negative
-     * @throws IllegalStateException if the Core is not initialized or has been shut down
+     * @throws NullPointerException if {@code type} is null
+     * @throws IllegalArgumentException if type is empty or unregistered, if the presence of {@code data} does not
+     *                                  match the type's extended data support, or if duration is negative
+     * @throws IllegalStateException if the Core has never been initialized
      */
     @NotNull Entry create(
             @NotNull String type,
@@ -60,15 +63,17 @@ public interface EntryFactory {
      * </p>
      *
      * @param type     the entry type. Cannot be null, must be non-empty and registered with the Core.
+     *                 The type must not support extended data.
      * @param target   the UUID of the target player or entity. Cannot be null.
      * @param executor the UUID of the player or system issuing the sanction. Cannot be null.
      * @param reason   the reason for the sanction. May be null.
      * @param duration the duration of the sanction. {@code null} means permanent. {@code Duration.ZERO} means immediate expiration.
      *
      * @return a new pending Entry instance
-     * @throws NullPointerException if {@code type}, {@code target}, or {@code executor} is null
-     * @throws IllegalArgumentException if type is empty, unregistered, or has invalid format, or if duration is negative
-     * @throws IllegalStateException if the Core is not initialized or has been shut down
+     * @throws NullPointerException if {@code type} is null
+     * @throws IllegalArgumentException if type is empty or unregistered, if the type requires extended data,
+     *                                  or if duration is negative
+     * @throws IllegalStateException if the Core has never been initialized
      */
     default @NotNull Entry create(
             @NotNull String type,

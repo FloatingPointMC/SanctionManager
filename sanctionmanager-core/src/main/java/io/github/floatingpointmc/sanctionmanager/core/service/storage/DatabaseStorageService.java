@@ -12,9 +12,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Storage service implementation using a database backend.
+ * Placeholder storage service for a future database backend.
  * <p>
- * Initializes and manages database persistence for entries via JDBC connections.
+ * Database persistence is not implemented. Every operation except {@link #shutdown()} throws
+ * {@code UnsupportedOperationException}; {@link #shutdown()} is a no-op. The constructor
+ * (Lombok-generated) only stores the Core and configuration.
  * </p>
  */
 @RequiredArgsConstructor
@@ -35,41 +37,103 @@ public class DatabaseStorageService implements IStorageService {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Not implemented.
+     * </p>
+     *
+     * @throws UnsupportedOperationException always
+     */
     @Override
     public long insertRecord(EntryPersisted entry) throws IOException {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Not implemented.
+     * </p>
+     *
+     * @throws UnsupportedOperationException always
+     */
     @Override
     public Optional<EntryPersisted> getRecord(long id) throws IOException {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Not implemented.
+     * </p>
+     *
+     * @throws UnsupportedOperationException always
+     */
     @Override
     public List<EntryPersisted> queryByTarget(UUID target) throws IOException {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Not implemented.
+     * </p>
+     *
+     * @throws UnsupportedOperationException always
+     */
     @Override
     public List<EntryPersisted> queryByTypeAndRelId(String typeId, long relId) throws IOException {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Not implemented.
+     * </p>
+     *
+     * @throws UnsupportedOperationException always
+     */
     @Override
     public List<EntryPersisted> queryAll() throws IOException {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Not implemented.
+     * </p>
+     *
+     * @throws UnsupportedOperationException always
+     */
     @Override
     public void updateRecord(EntryPersisted entry) throws IOException {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Not implemented.
+     * </p>
+     *
+     * @throws UnsupportedOperationException always
+     */
     @Override
     public void deleteRecord(long id) throws IOException {
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * No-op, since this implementation holds no resources.
+     * </p>
+     */
     @Override
     public void shutdown() throws IOException {
         // No-op for unimplemented database storage

@@ -3,6 +3,14 @@ package io.github.floatingpointmc.sanctionmanager.core.config.cache;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Configuration for the in-memory cache.
+ * <p>
+ * The constructor (Lombok-generated, taking {@code entryCapacity} and {@code queryCapacity} in that order)
+ * performs no validation. Both capacities must be positive; this is checked when the in-memory cache
+ * service is created, which throws {@code IllegalArgumentException} otherwise.
+ * </p>
+ */
 @RequiredArgsConstructor
 @Getter
 public class MemoryCacheConfig {

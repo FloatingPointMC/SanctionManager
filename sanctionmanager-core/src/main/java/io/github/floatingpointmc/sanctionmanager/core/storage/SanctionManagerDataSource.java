@@ -8,6 +8,9 @@ import com.zaxxer.hikari.HikariDataSource;
  * Extends HikariCP's {@code HikariDataSource} for efficient pooled connection management
  * to the persistence database.
  * </p>
+ * <p>
+ * Note: this class is currently not used anywhere in the project.
+ * </p>
  */
 public class SanctionManagerDataSource extends HikariDataSource {
 

@@ -10,6 +10,9 @@ import org.jetbrains.annotations.NotNull;
  * <p>
  * Specifies the Redis server connection details and authentication credentials.
  * </p>
+ * <p>
+ * Note: Redis caching is not implemented. The values are stored but never used to open a connection.
+ * </p>
  */
 @RequiredArgsConstructor
 @Getter

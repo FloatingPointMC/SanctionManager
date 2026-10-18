@@ -7,12 +7,13 @@ import org.jetbrains.annotations.Nullable;
  * Configuration for the storage layer.
  * <p>
  * This configuration determines whether entries are persisted to a database or binary file format.
- * Exactly one of {@code databaseConfig} or {@code binaryFileConfig} is non-null, depending on the storage mode.
+ * The configuration for the selected storage mode is always non-null. The other configuration may also be
+ * set, in which case it is ignored.
  * </p>
  */
 @Getter
 public final class StorageConfig {
-    /** Whether database storage is enabled. */
+    /** Whether database storage is enabled. Database storage is not implemented. */
     private final boolean usingDatabase;
     /** Binary file configuration, non-null if {@code usingDatabase} is {@code false}. */
     private final @Nullable BinaryFileConfig binaryFileConfig;

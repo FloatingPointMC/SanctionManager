@@ -18,12 +18,22 @@ import java.util.UUID;
  * Core implementation of EntryFactory.
  * <p>
  * Creates new pending Entry instances wrapped in {@code EntryWrapper} containing {@code EntrySnapshot}.
+ * The constructor is Lombok-generated and only stores the Core.
  * </p>
  */
 @RequiredArgsConstructor
 public class EntryFactoryCore implements EntryFactory {
     private final SanctionManagerCore core;
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The type identifier is trimmed before lookup. The {@code data} object is stored without copying, and
+     * {@code target} and {@code executor} are not null-checked.
+     * </p>
+     *
+     * @throws IllegalStateException if the Core has never been initialized
+     */
     @Override
     public @NotNull Entry create(
             @NotNull String type,

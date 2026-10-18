@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
  * Primary interface for accessing sanction management services.
  * <p>
  * {@code SanctionManager} is obtained via {@link SanctionManagerAPI#getApi()} after the Core has been
- * initialized. It provides access to the {@code EntryFactory} for creating new entries and {@code EntryManager}
+ * initialized. It provides access to the {@code EntryFactory} for creating new entries and {@code EntryService}
  * for persisting and querying entries.
  * </p>
  * <p>
@@ -23,11 +23,11 @@ public interface SanctionManager {
      * Gets the {@code EntryService} for persisting and querying entries.
      * <p>
      * The returned service is stable for the duration of the current Core lifecycle.
-     * After Core shutdown and re-initialization, a new manager instance is obtained via a new
+     * After Core shutdown and re-initialization, a new service instance is obtained via a new
      * {@code SanctionManager} instance.
      * </p>
      *
-     * @return the EntryManager, never null
+     * @return the EntryService, never null
      */
     @NotNull EntryService getEntryService();
 

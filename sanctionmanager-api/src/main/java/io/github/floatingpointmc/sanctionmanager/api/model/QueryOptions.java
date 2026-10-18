@@ -15,11 +15,13 @@ import java.util.*;
  * </p>
  * <p>
  * <strong>State Filtering:</strong> Three boolean flags control which entry states are included:
+ * </p>
  * <ul>
  *   <li>{@code includeExpired} - includes entries whose {@code expiryTime} has passed</li>
  *   <li>{@code includeWithdrawn} - includes entries that have been withdrawn</li>
  *   <li>{@code includeOverridden} - includes entries marked with the permanent overridden flag</li>
  * </ul>
+ * <p>
  * Flags are combined with OR semantics: if any flag is enabled, entries matching that state are included.
  * By default, all three flags are {@code false}, returning only active entries.
  * </p>
@@ -160,13 +162,13 @@ public final class QueryOptions {
      * Sets the types to filter by.
      * <p>
      * Replaces the current type set. Duplicate types are automatically removed.
-     * Each type must be non-empty and registered.
+     * Each type must be non-blank. Registration is not checked; unregistered types simply match no entries.
      * </p>
      *
      * @param types the type names to include. Null elements cause {@code NullPointerException}.
      * @return a new QueryOptions with the updated types
      * @throws NullPointerException if {@code types} is null or contains null
-     * @throws IllegalArgumentException if any type is empty or unregistered
+     * @throws IllegalArgumentException if any type is blank
      */
     @NotNull
     public QueryOptions types(String @NotNull ... types) {
@@ -191,10 +193,10 @@ public final class QueryOptions {
      * Does not replace existing types; instead adds to them. Duplicates are ignored.
      * </p>
      *
-     * @param type the type name to add. Cannot be null or empty.
+     * @param type the type name to add. Cannot be null or blank. Registration is not checked.
      * @return a new QueryOptions with the type added
      * @throws NullPointerException if {@code type} is null
-     * @throws IllegalArgumentException if {@code type} is empty or unregistered
+     * @throws IllegalArgumentException if {@code type} is blank
      */
     @NotNull
     public QueryOptions addType(@NotNull String type) {

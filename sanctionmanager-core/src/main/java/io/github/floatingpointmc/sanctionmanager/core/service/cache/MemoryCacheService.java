@@ -13,13 +13,15 @@ import java.util.stream.Collectors;
  * In-memory bounded LRU cache service implementation.
  * <p>
  * Uses two bounded LRU caches:
+ * </p>
  * <ul>
  *   <li><b>Entry cache</b>: Stores individual EntryPersisted objects with dual indexing (ID and type+relId)</li>
  *   <li><b>Query result cache</b>: Stores lists of entry IDs (not full objects) for complex queries</li>
  * </ul>
- * </p>
  * <p>
- * <b>Thread Safety:</b> All operations use read-write locks for safe concurrent access.
+ * <b>Locking:</b> Mutating operations take the write lock and lookups take the read lock. Note that the
+ * underlying maps use access order, so lookups also reorder them while only the read lock is held;
+ * concurrent lookups are therefore not guaranteed to be safe.
  * </p>
  * <p>
  * <b>Eviction:</b> Both caches use LRU (Least Recently Used) eviction when capacity is reached.
@@ -46,10 +48,11 @@ public class MemoryCacheService implements ICacheService {
     private final LinkedHashMap<QueryKey, List<Long>> queryResults;
 
     /**
-     * Creates a bounded LRU memory cache with specified capacities.
+     * Creates a bounded LRU memory cache with the capacities from the given configuration.
      *
-     * @param entryCapacity maximum number of entries to cache
-     * @param queryCapacity maximum number of query results to cache
+     * @param memoryCacheConfig the configuration providing the maximum number of cached entries and
+     *                          cached query results. Cannot be null.
+     * @throws IllegalArgumentException if either capacity is not positive
      */
     public MemoryCacheService(@NotNull MemoryCacheConfig memoryCacheConfig) {
         int entryCapacity = memoryCacheConfig.getEntryCapacity();
@@ -91,6 +94,7 @@ public class MemoryCacheService implements ICacheService {
         };
     }
 
+    /** {@inheritDoc} */
     @Override
     public @NotNull Optional<EntryPersisted> getById(long id) {
         lock.readLock().lock();
@@ -101,6 +105,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public @NotNull Optional<EntryPersisted> getByTypeAndRelId(@NotNull String typeId, long relId) {
         lock.readLock().lock();
@@ -116,6 +121,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public @NotNull Optional<List<EntryPersisted>> getQueryResult(@NotNull QueryKey key) {
         lock.readLock().lock();
@@ -142,6 +148,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void put(@NotNull EntryPersisted entry) {
         lock.writeLock().lock();
@@ -157,6 +164,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void putQueryResult(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries) {
         lock.writeLock().lock();
@@ -171,6 +179,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void invalidateById(long id) {
         lock.writeLock().lock();
@@ -189,6 +198,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void invalidateByTypeAndRelId(@NotNull String typeId, long relId) {
         lock.writeLock().lock();
@@ -203,6 +213,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void invalidateQueryResult(@NotNull QueryKey key) {
         lock.writeLock().lock();
@@ -213,6 +224,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void invalidateAll() {
         lock.writeLock().lock();
@@ -225,6 +237,7 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void invalidateAllQueryResults() {
         lock.writeLock().lock();

@@ -11,8 +11,8 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Facade for the persistence storage layer.
  * <p>
- * Delegates to either {@code DatabaseService} or {@code BinaryFileService} based on configuration.
- * Handles initialization of the selected storage implementation.
+ * Delegates to either {@link DatabaseStorageService} or {@link BinaryFileStorageService} based on configuration.
+ * Handles initialization of the selected storage implementation. The database backend is not implemented.
  * </p>
  */
 @Slf4j
@@ -24,6 +24,7 @@ public class StorageService {
      * Constructs a StorageService that selects the appropriate backend based on configuration.
      *
      * @param core the Core instance. Cannot be null.
+     * @throws IllegalStateException if the Core is already initialized
      */
     public StorageService(@NotNull SanctionManagerCore core) {
         if (core.isInitialized()) {
@@ -45,6 +46,10 @@ public class StorageService {
      * <p>
      * Must be called during Core initialization to set up the persistence layer.
      * </p>
+     *
+     * @throws UnsupportedOperationException if the database backend is selected (not implemented)
+     * @throws IllegalArgumentException if the binary file configuration is invalid
+     * @throws RuntimeException if the storage backend fails to open
      */
     public void initialize() {
         log.info("Initializing storage({})", storageService);

@@ -17,7 +17,12 @@ import java.util.UUID;
 /**
  * Storage service implementation using binary file-based backend.
  * <p>
- * Initializes and manages binary file persistence for entries with configurable page size and caching.
+ * Initializes and manages binary file persistence for entries through a {@link StorageEngine}.
+ * The page size is configurable; the engine's page cache size is currently fixed at 100 pages.
+ * </p>
+ * <p>
+ * All record operations throw {@code IllegalStateException} if {@link #initialize()} has not completed
+ * successfully. The constructor is Lombok-generated and only stores the Core and configuration.
  * </p>
  */
 @Slf4j
@@ -34,6 +39,8 @@ public class BinaryFileStorageService implements IStorageService {
      * </p>
      *
      * @throws IllegalArgumentException if the page size is less than 512 bytes
+     * @throws IllegalStateException if the Core's type manager is not yet available
+     * @throws RuntimeException if opening or creating the storage file fails
      */
     @Override
     public void initialize() {
@@ -61,30 +68,68 @@ public class BinaryFileStorageService implements IStorageService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Delegates to {@link StorageEngine#insertRecord(EntryPersisted)}, which assigns a new ID; the ID of
+     * the given entry is ignored.
+     * </p>
+     *
+     * @throws IllegalStateException if this service is not initialized
+     */
     @Override
     public long insertRecord(EntryPersisted entry) throws IOException {
         ensureInitialized();
         return engine.insertRecord(entry);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalStateException if this service is not initialized
+     */
     @Override
     public Optional<EntryPersisted> getRecord(long id) throws IOException {
         ensureInitialized();
         return engine.getRecord(id);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Records that cannot be read are logged and omitted from the result.
+     * </p>
+     *
+     * @throws IllegalStateException if this service is not initialized
+     */
     @Override
     public List<EntryPersisted> queryByTarget(UUID target) throws IOException {
         ensureInitialized();
         return engine.queryByTarget(target);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns at most one entry. If the record cannot be read, the failure is logged and an empty list is returned.
+     * </p>
+     *
+     * @throws IllegalStateException if this service is not initialized
+     */
     @Override
     public List<EntryPersisted> queryByTypeAndRelId(String typeId, long relId) throws IOException {
         ensureInitialized();
         return engine.queryByTypeAndRelId(typeId, relId);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Reads every record in the primary index. Unlike {@link #queryByTarget(UUID)}, read failures propagate.
+     * </p>
+     *
+     * @throws IllegalStateException if this service is not initialized
+     */
     @Override
     public List<EntryPersisted> queryAll() throws IOException {
         ensureInitialized();
@@ -96,18 +141,39 @@ public class BinaryFileStorageService implements IStorageService {
         return result;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalStateException if this service is not initialized
+     * @throws io.github.floatingpointmc.sanctionmanager.core.storage.engine.StorageException if no record
+     *         with the entry's ID exists
+     */
     @Override
     public void updateRecord(EntryPersisted entry) throws IOException {
         ensureInitialized();
         engine.updateRecord(entry);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Does nothing if no record with the given ID exists.
+     * </p>
+     *
+     * @throws IllegalStateException if this service is not initialized
+     */
     @Override
     public void deleteRecord(long id) throws IOException {
         ensureInitialized();
         engine.deleteRecord(id);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Does nothing if the engine was never initialized.
+     * </p>
+     */
     @Override
     public void shutdown() throws IOException {
         if (engine != null) {

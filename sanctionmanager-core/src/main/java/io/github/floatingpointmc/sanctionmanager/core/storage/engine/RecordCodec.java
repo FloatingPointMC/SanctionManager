@@ -13,6 +13,14 @@ import java.util.UUID;
 
 /**
  * Encodes and decodes Entry records to/from binary format.
+ * <p>
+ * Entry types are written as numeric IDs assigned in order of first encoding. This mapping is held only in
+ * memory and is not persisted, so a new codec instance cannot decode records written by a previous one
+ * unless the same types are first encoded in the same order.
+ * </p>
+ * <p>
+ * The {@code overridden} and {@code version} fields of an entry are not encoded.
+ * </p>
  */
 public class RecordCodec {
     private static final short RECORD_VERSION = 1;
@@ -25,10 +33,26 @@ public class RecordCodec {
     private final Map<Integer, String> idToType = new HashMap<>();
     private int nextTypeId = 1;
 
+    /**
+     * Creates a codec.
+     *
+     * @param typeManager type manager used to resolve type identifiers when decoding
+     */
     public RecordCodec(TypeManager typeManager) {
         this.typeManager = typeManager;
     }
 
+    /**
+     * Encodes an entry into a record, including a trailing checksum.
+     * <p>
+     * If the entry's type has not been encoded before by this codec, a new type ID is assigned. A null data
+     * object is written as an empty JSON object.
+     * </p>
+     *
+     * @param entry the entry to encode
+     * @return the record bytes
+     * @throws StorageException declared; not thrown by the current implementation
+     */
     public byte[] encode(EntryPersisted entry) throws StorageException {
         // Calculate size
         int size = calculateSize(entry);
@@ -98,6 +122,18 @@ public class RecordCodec {
         return recordBytes;
     }
 
+    /**
+     * Decodes a record.
+     * <p>
+     * The returned entry always has {@code overridden} set to {@code false} and {@code version} set to 0, since
+     * these are not stored. The data is always decoded as a JSON object, even for types without extra data.
+     * </p>
+     *
+     * @param recordBytes the record bytes
+     * @return the decoded entry
+     * @throws StorageException if the length, version, flags, type ID, type, string or data length, or checksum
+     *                          is invalid
+     */
     public EntryPersisted decode(byte[] recordBytes) throws StorageException {
         PageBuffer buf = new PageBuffer(recordBytes);
 

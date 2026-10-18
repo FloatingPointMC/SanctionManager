@@ -13,9 +13,21 @@ import java.util.*;
  * </p>
  */
 public abstract class QueryKey {
+    /**
+     * Compares this key with another object. Subclasses compare all query parameters that
+     * contribute to the key.
+     *
+     * @param o the object to compare
+     * @return {@code true} if {@code o} is a key of the same kind with equal parameters
+     */
     @Override
     public abstract boolean equals(Object o);
 
+    /**
+     * Returns a hash code consistent with {@link #equals(Object)}.
+     *
+     * @return the hash code of this key
+     */
     @Override
     public abstract int hashCode();
 
@@ -31,6 +43,17 @@ public abstract class QueryKey {
         private final Long startTime;
         private final Long endTime;
 
+        /**
+         * Creates a key from the target and a snapshot of the given options.
+         * <p>
+         * Option types are copied into a sorted set and time bounds are stored as epoch milliseconds,
+         * so later changes to {@code options} do not affect this key.
+         * </p>
+         *
+         * @param target  the queried target. Cannot be null.
+         * @param options the query options. Cannot be null.
+         * @throws NullPointerException if {@code options} is null
+         */
         public TargetQuery(@NotNull UUID target, @NotNull QueryOptions options) {
             this.target = target;
             this.includeExpired = options.includeExpired();
@@ -73,6 +96,16 @@ public abstract class QueryKey {
         private final Long startTime;
         private final Long endTime;
 
+        /**
+         * Creates a key from a snapshot of the given options and varargs types.
+         * <p>
+         * Option types and varargs types are kept separately, each as a sorted set.
+         * </p>
+         *
+         * @param options the query options. Cannot be null.
+         * @param types   the varargs types passed to the query. Cannot be null.
+         * @throws NullPointerException if {@code options}, {@code types}, or a varargs type is null
+         */
         public AllQuery(@NotNull QueryOptions options, String @NotNull ... types) {
             this.includeExpired = options.includeExpired();
             this.includeWithdrawn = options.includeWithdrawn();
@@ -111,6 +144,13 @@ public abstract class QueryKey {
         private final UUID target;
         private final Set<String> types;
 
+        /**
+         * Creates a key from the target and the given types.
+         *
+         * @param target the queried target. Cannot be null.
+         * @param types  the queried types, stored as a sorted set. Cannot be null.
+         * @throws NullPointerException if {@code types} or any type is null
+         */
         public LatestActiveQuery(@NotNull UUID target, String @NotNull ... types) {
             this.target = target;
             this.types = new TreeSet<>(Arrays.asList(types));
