@@ -21,6 +21,14 @@ import java.util.UUID;
  */
 @RequiredArgsConstructor
 public class DatabaseStorageService implements IStorageService {
+    private static final String CHECK_PARENT = "";
+    private static final String CREATE_PARENT = "CREATE TABLE sm_parent (" +
+            "id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT," +
+            "rel_id BIGINT UNSIGNED NOT NULL," +
+            "type VARCHAR(32) NOT NULL," +
+            "PRIMARY KEY (id)," +
+            "UNIQUE KEY uk_sm_parent_type_rel_id (type, rel_id)" +
+            ");";
     private final @NotNull SanctionManagerCore core;
     private final @NotNull DatabaseConfig databaseConfig;
 
@@ -34,6 +42,7 @@ public class DatabaseStorageService implements IStorageService {
      */
     @Override
     public void initialize() {
+
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 
