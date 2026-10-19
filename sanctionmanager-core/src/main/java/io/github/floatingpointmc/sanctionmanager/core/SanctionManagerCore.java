@@ -15,6 +15,7 @@ import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -142,9 +143,9 @@ public class SanctionManagerCore implements SanctionManager {
      * resources, such as the Redis connection, are released.
      * </p>
      */
-    public void shutdown() {
+    public void shutdown() throws IOException {
         synchronized (this) {
-//            storageService.shutdown();
+            storageService.shutdown();
             initialized = false;
             SanctionManagerAPI.clearApi();
             cacheService.shutdown();

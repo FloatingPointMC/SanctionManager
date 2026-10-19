@@ -8,6 +8,8 @@ import io.github.floatingpointmc.sanctionmanager.core.service.storage.IStorageSe
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+
 /**
  * Facade for the persistence storage layer.
  * <p>
@@ -63,5 +65,9 @@ public class StorageService {
      */
     public @NotNull IStorageService getStorageService() {
         return storageService;
+    }
+
+    public void shutdown() throws IOException {
+        storageService.shutdown();
     }
 }

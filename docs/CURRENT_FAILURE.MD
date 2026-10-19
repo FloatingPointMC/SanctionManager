@@ -59,7 +59,7 @@ distinguishes this from a runtime regression test.
 
 - **Problem:** Delete removes only the primary index; an update whose
   encoded size changes relocates its record without updating indexes.
-- **Location:** `sanctionmanager-core/src/main/java/io/github/floatingpointmc/sanctionmanager/core/storage/engine/StorageEngine.java`,
+- **Location:** `../sanctionmanager-core/src/main/java/io/github/floatingpointmc/sanctionmanager/core/storage`,
   `deleteRecord` (220-232), `updateRecord` (203-217);
   `DataPageManager.java`, `updateRecord` (117-140).
 - **Evidence:** `deleteRecord` explicitly leaves secondary-index removal
