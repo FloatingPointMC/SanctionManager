@@ -1,8 +1,10 @@
 package io.github.floatingpointmc.sanctionmanager.api.factory;
 
 import com.google.gson.JsonObject;
-import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
+import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +15,7 @@ import java.util.UUID;
  * Factory for creating new {@code Entry} instances.
  * <p>
  * Entries created by this factory are managed by the underlying Core implementation
- * and must be persisted via {@link EntryService#execute(Entry)}.
+ * and must be persisted via {@link EntryService#execute(EntryWrapper)}.
  * </p>
  * <p>
  * <strong>Lifecycle:</strong> Newly created entries are in a pending state. Key attributes such as
@@ -26,7 +28,7 @@ public interface EntryFactory {
      * Creates a new entry with optional extended data.
      * <p>
      * The entry is not automatically persisted. To persist, call
-     * {@link EntryService#execute(Entry)} with the returned entry.
+     * {@link EntryService#execute(EntryWrapper)} with the returned entry.
      * </p>
      *
      * @param type      the entry type identifier (e.g., "ban", "mute"). Cannot be null. Leading and trailing
@@ -37,7 +39,7 @@ public interface EntryFactory {
      * @param duration  the duration of the sanction. {@code null} means permanent (never expires).
      *                  {@code Duration.ZERO} means immediate expiration. Negative durations are rejected.
      * @param data      extended data as a JSON object. Must be non-null if and only if the type
-     *                  {@linkplain io.github.floatingpointmc.sanctionmanager.api.model.EntryType#withExtraData() supports extended data}.
+     *                  {@linkplain EntryType#withExtraData() supports extended data}.
      *                  The object is not copied at creation time; callers should not modify it afterward.
      *
      * @return a new pending Entry instance
@@ -84,4 +86,6 @@ public interface EntryFactory {
     ) {
         return create(type, target, executor, reason, duration, null);
     }
+
+    @NotNull EntryWrapper wrap(@NotNull Entry entry);
 }

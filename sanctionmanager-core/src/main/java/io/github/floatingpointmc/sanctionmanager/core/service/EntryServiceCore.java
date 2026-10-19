@@ -4,14 +4,16 @@ import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.persistence.EntryNotFoundException;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
-import io.github.floatingpointmc.sanctionmanager.core.model.EntryWrapper;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntryWrapperImpl;
 import io.github.floatingpointmc.sanctionmanager.core.service.cache.QueryKey;
 import io.github.floatingpointmc.sanctionmanager.core.service.storage.IStorageService;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,6 +40,7 @@ import java.util.stream.Collectors;
  * are updated or invalidated as appropriate.
  * </p>
  */
+@Slf4j
 public class EntryServiceCore implements EntryService {
     private final SanctionManagerCore core;
     private final Map<String, AtomicLong> typeRelIdCounters = new ConcurrentHashMap<>();
@@ -54,6 +57,36 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("SanctionManagerCore is already initialized");
         }
         this.core = core;
+    }
+
+    /**
+     * Restores the per-type relId counters from persistent storage.
+     * <p>
+     * This must be called after the storage service is initialized to ensure relId uniqueness
+     * across service restarts.
+     * </p>
+     *
+     * @param storage the storage service to restore from
+     */
+    public void restoreRelIdCounters(IStorageService storage) {
+        Map<String, Long> restored = storage.getTypeRelIdCounters();
+        typeRelIdCounters.clear();
+        for (Map.Entry<String, Long> entry : restored.entrySet()) {
+            typeRelIdCounters.put(entry.getKey(), new AtomicLong(entry.getValue()));
+        }
+    }
+
+    /**
+     * Persists the current per-type relId counters to storage.
+     *
+     * @throws IOException if writing the file fails
+     */
+    private void persistRelIdCounters() throws IOException {
+        IStorageService storage = core.getStorageService().getStorageService();
+        for (Map.Entry<String, AtomicLong> entry : typeRelIdCounters.entrySet()) {
+            storage.updateTypeRelIdCounter(entry.getKey(), entry.getValue().get());
+        }
+        storage.persistMetadata();
     }
 
     /** {@inheritDoc} */
@@ -94,8 +127,10 @@ public class EntryServiceCore implements EntryService {
                         && matchesTypeFilter(entry, options)
                         && matchesTimeRange(entry, options)) {
                     result.add(entry);
-                    // Populate entry cache
-                    core.getCacheService().put(entry);
+                    // Populate entry cache only if not already cached (prevents publishing stale data)
+                    if (!core.getCacheService().getById(entry.getId()).isPresent()) {
+                        core.getCacheService().put(entry);
+                    }
                 }
             }
 
@@ -167,8 +202,10 @@ public class EntryServiceCore implements EntryService {
                         && matchesTypeFilter(entry, options)
                         && matchesTimeRange(entry, options)) {
                     result.add(entry);
-                    // Populate entry cache
-                    core.getCacheService().put(entry);
+                    // Populate entry cache only if not already cached (prevents publishing stale data)
+                    if (!core.getCacheService().getById(entry.getId()).isPresent()) {
+                        core.getCacheService().put(entry);
+                    }
                 }
             }
 
@@ -231,7 +268,7 @@ public class EntryServiceCore implements EntryService {
             if (cachedList.isEmpty()) {
                 return Optional.empty();
             }
-            return Optional.of(new EntryWrapper(cachedList.get(0)));
+            return Optional.of(new EntryWrapperImpl(cachedList.get(0)));
         }
 
         // Cache miss - query persistent storage
@@ -246,7 +283,12 @@ public class EntryServiceCore implements EntryService {
                     .filter(e -> !e.isWithdrawn())
                     .filter(e -> !e.isOverridden())
                     .filter(e -> e.getExpiryTime() == null || e.getExpiryTime().after(now))
-                    .peek(e -> core.getCacheService().put(e)) // Populate entry cache
+                    .peek(e -> {
+                        // Populate entry cache only if not already cached (prevents publishing stale data)
+                        if (!core.getCacheService().getById(e.getId()).isPresent()) {
+                            core.getCacheService().put(e);
+                        }
+                    })
                     .max(Comparator.comparing(EntryPersisted::getExecutingTime)
                             .thenComparingLong(EntryPersisted::getId));
 
@@ -255,7 +297,7 @@ public class EntryServiceCore implements EntryService {
                     .orElse(Collections.emptyList());
             core.getCacheService().putQueryResult(queryKey, resultList);
 
-            return latest.map(EntryWrapper::new);
+            return latest.map(EntryWrapperImpl::new);
         } catch (IOException e) {
             throw new RuntimeException("Failed to query latest active entry", e);
         }
@@ -276,7 +318,7 @@ public class EntryServiceCore implements EntryService {
         // Cache-first lookup
         Optional<EntryPersisted> cached = core.getCacheService().getById(id);
         if (cached.isPresent()) {
-            return Optional.of(new EntryWrapper(cached.get()));
+            return Optional.of(new EntryWrapperImpl(cached.get()));
         }
 
         // Cache miss, query persistent storage
@@ -286,8 +328,11 @@ public class EntryServiceCore implements EntryService {
 
             if (persisted.isPresent()) {
                 EntryPersisted entry = persisted.get();
-                core.getCacheService().put(entry);
-                return Optional.of(new EntryWrapper(entry));
+                // Populate entry cache only if not already cached (prevents publishing stale data)
+                if (!core.getCacheService().getById(entry.getId()).isPresent()) {
+                    core.getCacheService().put(entry);
+                }
+                return Optional.of(new EntryWrapperImpl(entry));
             }
 
             return Optional.empty();
@@ -319,7 +364,7 @@ public class EntryServiceCore implements EntryService {
         // Cache-first lookup
         Optional<EntryPersisted> cached = core.getCacheService().getByTypeAndRelId(type, relId);
         if (cached.isPresent()) {
-            return Optional.of(new EntryWrapper(cached.get()));
+            return Optional.of(new EntryWrapperImpl(cached.get()));
         }
 
         // Cache miss, query persistent storage
@@ -329,8 +374,11 @@ public class EntryServiceCore implements EntryService {
 
             if (!entries.isEmpty()) {
                 EntryPersisted entry = entries.get(0); // Should be unique
-                core.getCacheService().put(entry);
-                return Optional.of(new EntryWrapper(entry));
+                // Populate entry cache only if not already cached (prevents publishing stale data)
+                if (!core.getCacheService().getById(entry.getId()).isPresent()) {
+                    core.getCacheService().put(entry);
+                }
+                return Optional.of(new EntryWrapperImpl(entry));
             }
 
             return Optional.empty();
@@ -348,23 +396,23 @@ public class EntryServiceCore implements EntryService {
      * </p>
      */
     @Override
-    public void execute(@NotNull Entry entry) {
+    public void execute(@NotNull EntryWrapper entry) {
         if (!core.isInitialized()) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
         Objects.requireNonNull(entry, "entry cannot be null");
 
-        if (!(entry instanceof EntryWrapper)) {
+        if (!(entry instanceof EntryWrapperImpl)) {
             throw new IllegalArgumentException("Invalid Entry: not created by this Core");
         }
 
-        EntryWrapper wrapper = (EntryWrapper) entry;
-        if (!(wrapper.entry instanceof EntrySnapshot)) {
+        Entry unwrapped = entry.unwrap();
+        if (!(unwrapped instanceof EntrySnapshot)) {
             throw new IllegalArgumentException("Entry has already been executed");
         }
 
-        EntrySnapshot tempSnapshot = (EntrySnapshot) wrapper.entry;
+        EntrySnapshot tempSnapshot = (EntrySnapshot) unwrapped;
 
         // Generate temporary IDs (storage may assign different ones)
         long tempId = idCounter.incrementAndGet();
@@ -402,14 +450,20 @@ public class EntryServiceCore implements EntryService {
                     null, null, false, null, 0
             );
 
-            // Cache the newly created entry
-            core.getCacheService().put(snapshot);
+            // Best-effort cache update: log failures without failing the operation
+            try {
+                core.getCacheService().put(snapshot);
+                core.getCacheService().invalidateAllQueryResults();
+            } catch (Exception cacheEx) {
+                // Storage commit succeeded; cache update is best-effort
+                log.warn("Cache update failed after successful storage commit (entry ID {})", assignedId, cacheEx);
+            }
 
-            // Invalidate all query result caches (new entry affects all queries)
-            core.getCacheService().invalidateAllQueryResults();
+            // Persist relId counters
+            persistRelIdCounters();
 
             // Transition wrapper to persisted state
-            wrapper.entry = snapshot;
+            ((EntryWrapperImpl) entry).entry = snapshot;
         } catch (IOException e) {
             throw new RuntimeException("Failed to store entry", e);
         }
@@ -423,7 +477,7 @@ public class EntryServiceCore implements EntryService {
      * </p>
      */
     @Override
-    public void updateData(@NotNull Entry entry, @NotNull JsonObject newData) {
+    public void updateData(@NotNull EntryWrapper entry, @NotNull JsonObject newData) {
         if (!core.isInitialized()) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
@@ -431,11 +485,11 @@ public class EntryServiceCore implements EntryService {
         Objects.requireNonNull(entry, "entry cannot be null");
         Objects.requireNonNull(newData, "newData cannot be null");
 
-        if (!(entry instanceof EntryWrapper)) {
+        if (!(entry instanceof EntryWrapperImpl)) {
             throw new IllegalArgumentException("Invalid Entry: not created by this Core");
         }
 
-        EntryWrapper wrapper = (EntryWrapper) entry;
+        EntryWrapperImpl wrapper = (EntryWrapperImpl) entry;
         if (!(wrapper.entry instanceof EntryPersisted)) {
             throw new IllegalArgumentException("Entry has not been executed yet");
         }
@@ -469,13 +523,14 @@ public class EntryServiceCore implements EntryService {
             IStorageService storage = core.getStorageService().getStorageService();
             storage.updateRecord(updated);
 
-            // Only after successful storage update, update wrapper and cache
-            wrapper.entry = updated;
-            core.getCacheService().invalidateById(updated.getId());
-            core.getCacheService().put(updated);
-
-            // Invalidate all query results (data change may affect query results)
-            core.getCacheService().invalidateAllQueryResults();
+            // Best-effort cache update after successful storage commit
+            try {
+                core.getCacheService().invalidateById(updated.getId());
+                core.getCacheService().put(updated);
+                core.getCacheService().invalidateAllQueryResults();
+            } catch (Exception cacheEx) {
+                log.warn("Cache update failed after successful data update (entry ID {})", updated.getId(), cacheEx);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to update entry data", e);
         }
@@ -483,7 +538,7 @@ public class EntryServiceCore implements EntryService {
 
     /** {@inheritDoc} */
     @Override
-    public void withdraw(@NotNull Entry entry, @NotNull UUID withdrawnBy, @Nullable String withdrawReason) {
+    public void withdraw(@NotNull EntryWrapper entry, @NotNull UUID withdrawnBy, @Nullable String withdrawReason) {
         if (!core.isInitialized()) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
@@ -491,11 +546,11 @@ public class EntryServiceCore implements EntryService {
         Objects.requireNonNull(entry, "entry cannot be null");
         Objects.requireNonNull(withdrawnBy, "withdrawnBy cannot be null");
 
-        if (!(entry instanceof EntryWrapper)) {
+        if (!(entry instanceof EntryWrapperImpl)) {
             throw new IllegalArgumentException("Invalid Entry: not created by this Core");
         }
 
-        EntryWrapper wrapper = (EntryWrapper) entry;
+        EntryWrapperImpl wrapper = (EntryWrapperImpl) entry;
         if (!(wrapper.entry instanceof EntryPersisted)) {
             throw new IllegalArgumentException("Entry has not been executed yet");
         }
@@ -529,13 +584,15 @@ public class EntryServiceCore implements EntryService {
             IStorageService storage = core.getStorageService().getStorageService();
             storage.updateRecord(updated);
 
-            // Only after successful storage update, update wrapper and cache
-            wrapper.entry = updated;
-            core.getCacheService().invalidateById(updated.getId());
-            core.getCacheService().put(updated);
-
-            // Invalidate all query results (withdrawal affects active/withdrawn state)
-            core.getCacheService().invalidateAllQueryResults();
+            // Best-effort cache update after successful storage commit
+            try {
+                wrapper.entry = updated;
+                core.getCacheService().invalidateById(updated.getId());
+                core.getCacheService().put(updated);
+                core.getCacheService().invalidateAllQueryResults();
+            } catch (Exception cacheEx) {
+                log.warn("Cache update failed after successful withdrawal (entry ID {})", updated.getId(), cacheEx);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to withdraw entry", e);
         }
@@ -543,18 +600,18 @@ public class EntryServiceCore implements EntryService {
 
     /** {@inheritDoc} */
     @Override
-    public void updateWithdrawReason(@NotNull Entry entry, @Nullable String withdrawReason) {
+    public void updateWithdrawReason(@NotNull EntryWrapper entry, @Nullable String withdrawReason) {
         if (!core.isInitialized()) {
             throw new IllegalStateException("SanctionManagerCore is not initialized");
         }
 
         Objects.requireNonNull(entry, "entry cannot be null");
 
-        if (!(entry instanceof EntryWrapper)) {
+        if (!(entry instanceof EntryWrapperImpl)) {
             throw new IllegalArgumentException("Invalid Entry: not created by this Core");
         }
 
-        EntryWrapper wrapper = (EntryWrapper) entry;
+        EntryWrapperImpl wrapper = (EntryWrapperImpl) entry;
         if (!(wrapper.entry instanceof EntryPersisted)) {
             throw new IllegalArgumentException("Entry has not been executed yet");
         }
@@ -588,13 +645,15 @@ public class EntryServiceCore implements EntryService {
             IStorageService storage = core.getStorageService().getStorageService();
             storage.updateRecord(updated);
 
-            // Only after successful storage update, update wrapper and cache
-            wrapper.entry = updated;
-            core.getCacheService().invalidateById(updated.getId());
-            core.getCacheService().put(updated);
-
-            // Reason change doesn't affect query results structure, but invalidate for safety
-            core.getCacheService().invalidateAllQueryResults();
+            // Best-effort cache update after successful storage commit
+            try {
+                wrapper.entry = updated;
+                core.getCacheService().invalidateById(updated.getId());
+                core.getCacheService().put(updated);
+                core.getCacheService().invalidateAllQueryResults();
+            } catch (Exception cacheEx) {
+                log.warn("Cache update failed after successful withdraw reason update (entry ID {})", updated.getId(), cacheEx);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to update withdraw reason", e);
         }
@@ -698,24 +757,29 @@ public class EntryServiceCore implements EntryService {
             if (e.getOverriddenBy() != null && e.getOverriddenBy() == deletedId) {
                 e.setOverriddenBy(null);
                 storage.updateRecord(e);
-                core.getCacheService().invalidateById(e.getId());
-                core.getCacheService().put(e);
+                // Best-effort cache update
+                try {
+                    core.getCacheService().invalidateById(e.getId());
+                    core.getCacheService().put(e);
+                } catch (Exception cacheEx) {
+                    log.warn("Cache update failed after clearing overriddenBy reference (entry ID {})", e.getId(), cacheEx);
+                }
             }
         }
     }
 
     /**
-     * Wraps an EntryPersisted in an EntryWrapper using a defensive copy.
+     * Wraps an EntryPersisted in an EntryWrapperImpl using a defensive copy.
      * <p>
      * This ensures query results are independent snapshots that remain unchanged
      * even if the cached or another wrapper's entry is later mutated.
      * </p>
      *
      * @param entry the entry to wrap
-     * @return a new EntryWrapper containing a defensive copy
+     * @return a new EntryWrapperImpl containing a defensive copy
      */
     private Entry wrapWithDefensiveCopy(EntryPersisted entry) {
-        return new EntryWrapper(entry.defensiveCopy());
+        return new EntryWrapperImpl(entry.defensiveCopy());
     }
 
     private boolean matchesStateFilter(EntryPersisted entry, QueryOptions options, Date now) {

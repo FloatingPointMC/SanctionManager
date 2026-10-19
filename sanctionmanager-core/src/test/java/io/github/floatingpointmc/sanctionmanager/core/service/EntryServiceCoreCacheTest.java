@@ -409,5 +409,20 @@ public class EntryServiceCoreCacheTest {
         public void shutdown() throws IOException {
             delegate.shutdown();
         }
+
+        @Override
+        public java.util.Map<String, Long> getTypeRelIdCounters() {
+            return delegate.getTypeRelIdCounters();
+        }
+
+        @Override
+        public void updateTypeRelIdCounter(String typeIdentifier, long nextRelId) {
+            delegate.updateTypeRelIdCounter(typeIdentifier, nextRelId);
+        }
+
+        @Override
+        public void persistMetadata() throws IOException {
+            delegate.persistMetadata();
+        }
     }
 }

@@ -1,8 +1,11 @@
 package io.github.floatingpointmc.sanctionmanager.api.service;
 
 import com.google.gson.JsonObject;
+import io.github.floatingpointmc.sanctionmanager.api.exceptions.ConcurrentDataModificationException;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.persistence.EntryNotFoundException;
+import io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -24,7 +27,7 @@ import java.util.UUID;
  * </p>
  * <p>
  * <strong>Concurrency:</strong> This interface does not define a concurrency contract. Optimistic locking
- * and {@link io.github.floatingpointmc.sanctionmanager.api.exceptions.ConcurrentDataModificationException}
+ * and {@link ConcurrentDataModificationException}
  * are reserved for future use; the current Core implementation does not perform version checks and does not
  * throw that exception.
  * </p>
@@ -126,15 +129,15 @@ public interface EntryService {
      * </p>
      *
      * @param entry the pending Entry to persist. Must have been created via
-     * {@link io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory#create(String, UUID, UUID, String, Duration)}
+     * {@link EntryFactory#create(String, UUID, UUID, String, Duration)}
      *              or
-     *              {@link io.github.floatingpointmc.sanctionmanager.api.factory.EntryFactory#create(String, UUID, UUID, String, Duration, JsonObject)}
+     *              {@link EntryFactory#create(String, UUID, UUID, String, Duration, JsonObject)}
      * @throws NullPointerException if {@code entry} is null
      * @throws IllegalArgumentException if {@code entry} was not created by this Core's EntryFactory or has already been persisted
      * @throws IllegalStateException if the Core is not initialized or has been shut down
      * @throws RuntimeException if persistence or transaction operations fail; see specific subclasses for details
      */
-    void execute(@NotNull Entry entry);
+    void execute(@NotNull EntryWrapper entry);
 
     /**
      * Updates the extended data of an entry.
@@ -151,7 +154,7 @@ public interface EntryService {
      * @throws IllegalStateException if the entry is withdrawn, or if the Core is not initialized or has been shut down
      * @throws RuntimeException if the storage operation fails
      */
-    void updateData(@NotNull Entry entry, @NotNull JsonObject newData);
+    void updateData(@NotNull EntryWrapper entry, @NotNull JsonObject newData);
 
     /**
      * Withdraws a persisted entry.
@@ -168,7 +171,7 @@ public interface EntryService {
      * @throws IllegalStateException if the entry has already been withdrawn, or if the Core is not initialized or has been shut down
      * @throws RuntimeException if the storage operation fails, including when the entry no longer exists in storage
      */
-    void withdraw(@NotNull Entry entry, @NotNull UUID withdrawnBy, @Nullable String withdrawReason);
+    void withdraw(@NotNull EntryWrapper entry, @NotNull UUID withdrawnBy, @Nullable String withdrawReason);
 
     /**
      * Updates the withdrawal reason for an already-withdrawn entry.
@@ -183,7 +186,7 @@ public interface EntryService {
      * @throws IllegalStateException if the entry has not been withdrawn, or if the Core is not initialized or has been shut down
      * @throws RuntimeException if the storage operation fails, including when the entry no longer exists in storage
      */
-    void updateWithdrawReason(@NotNull Entry entry, @Nullable String withdrawReason);
+    void updateWithdrawReason(@NotNull EntryWrapper entry, @Nullable String withdrawReason);
 
     /**
      * Deletes an entry by type and relation ID.

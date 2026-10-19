@@ -34,7 +34,6 @@ public class EntryPersisted implements Entry {
     @Getter(onMethod_ = {@Override})
     private final @NotNull UUID executor;
     private final @Nullable Date expiryTime;
-    @Getter(onMethod_ = {@Override})
     private final @NotNull Date executingTime;
     @Getter(onMethod_ = {@Override})
     private final @Nullable String reason;
@@ -83,8 +82,8 @@ public class EntryPersisted implements Entry {
         this.type = type;
         this.target = target;
         this.executor = executor;
-        this.expiryTime = expiryTime;
-        this.executingTime = executingTime;
+        this.expiryTime = expiryTime != null ? new Date(expiryTime.getTime()) : null;
+        this.executingTime = new Date(executingTime.getTime());
         this.reason = reason;
         this.data = data;
         this.withdrawnBy = withdrawnBy;
@@ -97,12 +96,23 @@ public class EntryPersisted implements Entry {
     /**
      * {@inheritDoc}
      * <p>
-     * Returns a copy of the stored date. Note that {@link #getExecutingTime()} returns the stored instance itself.
+     * Returns a copy of the stored date. Note that {@link #getExecutingTime()} also returns a copy.
      * </p>
      */
     @Override
     public @Nullable Date getExpiryTime() {
         return expiryTime != null ? new Date(expiryTime.getTime()) : null;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns a copy of the stored date to prevent external mutation.
+     * </p>
+     */
+    @Override
+    public @NotNull Date getExecutingTime() {
+        return new Date(executingTime.getTime());
     }
 
     /**

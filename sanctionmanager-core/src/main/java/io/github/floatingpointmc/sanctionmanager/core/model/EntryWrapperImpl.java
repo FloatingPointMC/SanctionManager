@@ -3,6 +3,7 @@ package io.github.floatingpointmc.sanctionmanager.core.model;
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
 import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,7 +23,7 @@ import java.util.UUID;
  * </p>
  */
 @AllArgsConstructor
-public class EntryWrapper implements Entry {
+public class EntryWrapperImpl implements EntryWrapper {
     /**
      * The current delegate. This field is public and mutable; the Core replaces it with an
      * {@code EntryPersisted} after the entry is executed.
@@ -111,5 +112,12 @@ public class EntryWrapper implements Entry {
     @Override
     public @NotNull JsonObject getData() {
         return entry.getData();
+    }
+
+    public Entry unwrap() {
+        if (entry instanceof EntryWrapperImpl) {
+            return ((EntryWrapperImpl) entry).unwrap();
+        }
+        return entry;
     }
 }

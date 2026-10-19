@@ -14,9 +14,9 @@ import java.util.UUID;
 /**
  * Encodes and decodes Entry records to/from binary format.
  * <p>
- * Entry types are written as numeric IDs assigned in order of first encoding. This mapping is held only in
- * memory and is not persisted, so a new codec instance cannot decode records written by a previous one
- * unless the same types are first encoded in the same order.
+ * Entry types are written as numeric IDs. The mapping between type identifiers and numeric IDs is provided
+ * by the caller (typically restored from persistent storage) and maintained during encoding. New types
+ * encountered during encoding are assigned sequential IDs.
  * </p>
  * <p>
  * The {@code overridden} and {@code version} fields of an entry are not encoded.
@@ -29,17 +29,46 @@ public class RecordCodec {
     private final com.google.gson.Gson gson = new com.google.gson.Gson();
 
     // Type ID registry: identifier -> numeric ID
-    private final Map<String, Integer> typeToId = new HashMap<>();
-    private final Map<Integer, String> idToType = new HashMap<>();
-    private int nextTypeId = 1;
+    private final Map<String, Integer> typeToId;
+    private final Map<Integer, String> idToType;
+    private int nextTypeId;
 
     /**
-     * Creates a codec.
+     * Creates a codec with an empty type mapping.
      *
      * @param typeManager type manager used to resolve type identifiers when decoding
      */
     public RecordCodec(TypeManager typeManager) {
+        this(typeManager, new HashMap<>());
+    }
+
+    /**
+     * Creates a codec with a restored type mapping.
+     *
+     * @param typeManager    type manager used to resolve type identifiers when decoding
+     * @param restoredTypeIdMap existing type ID mapping to restore (will be copied)
+     */
+    public RecordCodec(TypeManager typeManager, Map<String, Integer> restoredTypeIdMap) {
         this.typeManager = typeManager;
+        this.typeToId = new HashMap<>(restoredTypeIdMap);
+        this.idToType = new HashMap<>();
+        int maxId = 0;
+        for (Map.Entry<String, Integer> entry : restoredTypeIdMap.entrySet()) {
+            idToType.put(entry.getValue(), entry.getKey());
+            if (entry.getValue() > maxId) {
+                maxId = entry.getValue();
+            }
+        }
+        this.nextTypeId = maxId + 1;
+    }
+
+    /**
+     * Gets a copy of the current type ID mapping for persistence.
+     *
+     * @return a copy of the type identifier to numeric ID mapping
+     */
+    public synchronized Map<String, Integer> getTypeIdMap() {
+        return new HashMap<>(typeToId);
     }
 
     /**

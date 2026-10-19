@@ -181,6 +181,27 @@ public class BinaryFileStorageService implements IStorageService {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public java.util.Map<String, Long> getTypeRelIdCounters() {
+        ensureInitialized();
+        return engine.getTypeRelIdCounters();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void updateTypeRelIdCounter(String typeIdentifier, long nextRelId) {
+        ensureInitialized();
+        engine.updateTypeRelIdCounter(typeIdentifier, nextRelId);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void persistMetadata() throws IOException {
+        ensureInitialized();
+        engine.persistMetadata();
+    }
+
     private void ensureInitialized() {
         if (engine == null) {
             throw new IllegalStateException("Storage engine not initialized");

@@ -97,4 +97,30 @@ public interface IStorageService {
      * @throws IOException if shutdown fails
      */
     void shutdown() throws IOException;
+
+    /**
+     * Gets a copy of the per-type relId counters from persistent storage.
+     * <p>
+     * This provides the highest relId assigned for each type, allowing the service layer
+     * to restore and continue the sequence after a restart.
+     * </p>
+     *
+     * @return a map from type identifier to next relId value
+     */
+    java.util.Map<String, Long> getTypeRelIdCounters();
+
+    /**
+     * Updates the per-type relId counter for a given type.
+     *
+     * @param typeIdentifier the type identifier
+     * @param nextRelId      the next relId value to assign for this type
+     */
+    void updateTypeRelIdCounter(String typeIdentifier, long nextRelId);
+
+    /**
+     * Persists the current metadata (type mappings and relId counters) to disk.
+     *
+     * @throws IOException if writing the file fails
+     */
+    void persistMetadata() throws IOException;
 }

@@ -35,6 +35,10 @@ public class Superblock {
     public long committedLsn;
     /** Reserved flags; unused (0). */
     public int flags;
+    /** Type ID mapping: type identifier -> numeric ID. Not null after deserialization. */
+    public java.util.Map<String, Integer> typeIdMap;
+    /** Per-type relId counters: type identifier -> next relId. Not null after deserialization. */
+    public java.util.Map<String, Long> typeRelIdCounters;
 
     /**
      * Creates a superblock for a new, empty file.
@@ -53,6 +57,8 @@ public class Superblock {
         sb.walCheckpointLsn = 0;
         sb.committedLsn = 0;
         sb.flags = 0;
+        sb.typeIdMap = new java.util.HashMap<>();
+        sb.typeRelIdCounters = new java.util.HashMap<>();
         return sb;
     }
 
@@ -104,11 +110,44 @@ public class Superblock {
         sb.committedLsn = buf.getLong();
         sb.flags = buf.getInt();
 
-        // Verify CRC
+        // Verify CRC of fixed header
         int storedCrc = buf.getInt();
         int computedCrc = Crc32c.compute(data, 0, 92);
         if (storedCrc != computedCrc) {
             throw new StorageException("Superblock CRC mismatch");
+        }
+
+        // Read metadata section (type mappings and relId counters)
+        // Format: [typeMapCount:int] ([typeIdLen:int] [typeId:bytes] [numericId:int])* [relIdCounterCount:int] ([typeIdLen:int] [typeId:bytes] [counter:long])*
+        sb.typeIdMap = new java.util.HashMap<>();
+        sb.typeRelIdCounters = new java.util.HashMap<>();
+
+        if (buf.remaining() >= 4) {
+            int typeMapCount = buf.getInt();
+            for (int i = 0; i < typeMapCount && buf.remaining() >= 4; i++) {
+                int typeIdLen = buf.getInt();
+                if (typeIdLen > 0 && typeIdLen < 256 && buf.remaining() >= typeIdLen + 4) {
+                    byte[] typeIdBytes = new byte[typeIdLen];
+                    buf.get(typeIdBytes);
+                    String typeId = new String(typeIdBytes, java.nio.charset.StandardCharsets.UTF_8);
+                    int numericId = buf.getInt();
+                    sb.typeIdMap.put(typeId, numericId);
+                }
+            }
+
+            if (buf.remaining() >= 4) {
+                int relIdCounterCount = buf.getInt();
+                for (int i = 0; i < relIdCounterCount && buf.remaining() >= 4; i++) {
+                    int typeIdLen = buf.getInt();
+                    if (typeIdLen > 0 && typeIdLen < 256 && buf.remaining() >= typeIdLen + 8) {
+                        byte[] typeIdBytes = new byte[typeIdLen];
+                        buf.get(typeIdBytes);
+                        String typeId = new String(typeIdBytes, java.nio.charset.StandardCharsets.UTF_8);
+                        long counter = buf.getLong();
+                        sb.typeRelIdCounters.put(typeId, counter);
+                    }
+                }
+            }
         }
 
         return sb;
@@ -153,7 +192,28 @@ public class Superblock {
         int crc = Crc32c.compute(data, 0, 92);
         buf.putInt(crc);
 
-        // Zero-fill reserved area
+        // Write metadata section (type mappings and relId counters)
+        // Ensure typeIdMap and typeRelIdCounters are not null
+        java.util.Map<String, Integer> safeTypeIdMap = typeIdMap != null ? typeIdMap : java.util.Collections.emptyMap();
+        java.util.Map<String, Long> safeRelIdCounters = typeRelIdCounters != null ? typeRelIdCounters : java.util.Collections.emptyMap();
+
+        buf.putInt(safeTypeIdMap.size());
+        for (java.util.Map.Entry<String, Integer> entry : safeTypeIdMap.entrySet()) {
+            byte[] typeIdBytes = entry.getKey().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            buf.putInt(typeIdBytes.length);
+            buf.put(typeIdBytes);
+            buf.putInt(entry.getValue());
+        }
+
+        buf.putInt(safeRelIdCounters.size());
+        for (java.util.Map.Entry<String, Long> entry : safeRelIdCounters.entrySet()) {
+            byte[] typeIdBytes = entry.getKey().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            buf.putInt(typeIdBytes.length);
+            buf.put(typeIdBytes);
+            buf.putLong(entry.getValue());
+        }
+
+        // Zero-fill remaining area
         while (buf.position() < data.length) {
             buf.putByte((byte) 0);
         }

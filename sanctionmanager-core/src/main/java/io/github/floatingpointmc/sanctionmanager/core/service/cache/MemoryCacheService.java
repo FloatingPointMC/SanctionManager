@@ -97,18 +97,20 @@ public class MemoryCacheService implements ICacheService {
     /** {@inheritDoc} */
     @Override
     public @NotNull Optional<EntryPersisted> getById(long id) {
-        lock.readLock().lock();
+        // Use writeLock because entryById uses access-order, so get() modifies iteration order
+        lock.writeLock().lock();
         try {
             return Optional.ofNullable(entryById.get(id));
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
     /** {@inheritDoc} */
     @Override
     public @NotNull Optional<EntryPersisted> getByTypeAndRelId(@NotNull String typeId, long relId) {
-        lock.readLock().lock();
+        // Use writeLock because entryById uses access-order, so get() modifies iteration order
+        lock.writeLock().lock();
         try {
             String key = makeTypeRelIdKey(typeId, relId);
             Long id = typeRelIdToId.get(key);
@@ -117,14 +119,15 @@ public class MemoryCacheService implements ICacheService {
             }
             return Optional.ofNullable(entryById.get(id));
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
     /** {@inheritDoc} */
     @Override
     public @NotNull Optional<List<EntryPersisted>> getQueryResult(@NotNull QueryKey key) {
-        lock.readLock().lock();
+        // Use writeLock because entryById uses access-order and we call get() on it
+        lock.writeLock().lock();
         try {
             List<Long> ids = queryResults.get(key);
             if (ids == null) {
@@ -144,7 +147,7 @@ public class MemoryCacheService implements ICacheService {
 
             return Optional.of(result);
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -154,11 +157,20 @@ public class MemoryCacheService implements ICacheService {
         lock.writeLock().lock();
         try {
             long id = entry.getId();
-            String typeRelIdKey = makeTypeRelIdKey(entry.getType().getIdentifier(), entry.getRelId());
+            String newTypeRelIdKey = makeTypeRelIdKey(entry.getType().getIdentifier(), entry.getRelId());
+
+            // If replacing an existing entry with a different type/relId, remove the old mapping
+            EntryPersisted oldEntry = entryById.get(id);
+            if (oldEntry != null) {
+                String oldTypeRelIdKey = makeTypeRelIdKey(oldEntry.getType().getIdentifier(), oldEntry.getRelId());
+                if (!oldTypeRelIdKey.equals(newTypeRelIdKey)) {
+                    typeRelIdToId.remove(oldTypeRelIdKey);
+                }
+            }
 
             // Update both indexes
             entryById.put(id, entry);
-            typeRelIdToId.put(typeRelIdKey, id);
+            typeRelIdToId.put(newTypeRelIdKey, id);
         } finally {
             lock.writeLock().unlock();
         }

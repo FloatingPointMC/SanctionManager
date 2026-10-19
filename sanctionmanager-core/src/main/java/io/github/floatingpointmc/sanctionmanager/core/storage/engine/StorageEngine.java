@@ -24,7 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class StorageEngine {
     private final PageManager pageManager;
-    private final RecordCodec recordCodec;
+    private final TypeManager typeManager;
+    private RecordCodec recordCodec;
     private Superblock superblock;
     private DataPageManager dataPageManager;
 
@@ -39,11 +40,12 @@ public class StorageEngine {
      * @param filePath       path to the storage file
      * @param pageSize       page size in bytes
      * @param maxCachedPages maximum number of pages held in the page cache
-     * @param typeManager    type manager used to resolve entry types when decoding records
+     * @param typeManager    type manager used to resolve entry types when decoding
      * @throws IOException declared but not thrown by the current implementation
      */
     public StorageEngine(Path filePath, int pageSize, int maxCachedPages, TypeManager typeManager) throws IOException {
         this.pageManager = new PageManager(filePath, pageSize, maxCachedPages);
+        this.typeManager = typeManager;
         this.recordCodec = new RecordCodec(typeManager);
     }
 
@@ -96,13 +98,17 @@ public class StorageEngine {
         byte[] superblockPage = pageManager.readPage(0);
         superblock = Superblock.fromBytes(superblockPage, pageManager.getPageSize());
 
+        // Restore RecordCodec with persisted type mapping
+        this.recordCodec = new RecordCodec(typeManager, superblock.typeIdMap);
+
         // Initialize data page manager
         dataPageManager = new DataPageManager(pageManager, superblock);
 
         // Load indexes from disk (simplified: just load all records)
         loadIndexes();
 
-        log.info("Opened existing storage file with {} pages, next entry ID: {}", superblock.filePageCount, superblock.nextEntryId);
+        log.info("Opened existing storage file with {} pages, next entry ID: {}, {} type mappings, {} relId counters",
+                superblock.filePageCount, superblock.nextEntryId, superblock.typeIdMap.size(), superblock.typeRelIdCounters.size());
     }
 
     private void loadIndexes() throws IOException {
@@ -381,6 +387,10 @@ public class StorageEngine {
     }
 
     private void persistSuperblock() throws IOException {
+        // Capture current type mapping and relId counters before writing
+        superblock.typeIdMap = recordCodec.getTypeIdMap();
+        // typeRelIdCounters are updated by the caller (EntryServiceCore) and stored in superblock
+
         byte[] superblockPage = new byte[pageManager.getPageSize()];
         superblock.toBytes(superblockPage, pageManager.getPageSize());
         pageManager.writePage(0, superblockPage);
@@ -395,6 +405,34 @@ public class StorageEngine {
     public void shutdown() throws IOException {
         persistSuperblock();
         pageManager.shutdown();
+    }
+
+    /**
+     * Gets a copy of the per-type relId counters.
+     *
+     * @return a copy of the type identifier to next relId mapping
+     */
+    public Map<String, Long> getTypeRelIdCounters() {
+        return new HashMap<>(superblock.typeRelIdCounters);
+    }
+
+    /**
+     * Updates the per-type relId counter for a given type.
+     *
+     * @param typeIdentifier the type identifier
+     * @param nextRelId      the next relId value to assign for this type
+     */
+    public void updateTypeRelIdCounter(String typeIdentifier, long nextRelId) {
+        superblock.typeRelIdCounters.put(typeIdentifier, nextRelId);
+    }
+
+    /**
+     * Persists the current type mappings and relId counters to disk.
+     *
+     * @throws IOException if writing the file fails
+     */
+    public void persistMetadata() throws IOException {
+        persistSuperblock();
     }
 
     /**

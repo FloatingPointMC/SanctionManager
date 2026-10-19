@@ -139,6 +139,24 @@ public class DatabaseStorageService implements IStorageService {
         // No-op for unimplemented database storage
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public java.util.Map<String, Long> getTypeRelIdCounters() {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void updateTypeRelIdCounter(String typeIdentifier, long nextRelId) {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void persistMetadata() throws IOException {
+        throw new UnsupportedOperationException("Database storage is not yet implemented");
+    }
+
     @Override
     public String toString() {
         return "DatabaseService";

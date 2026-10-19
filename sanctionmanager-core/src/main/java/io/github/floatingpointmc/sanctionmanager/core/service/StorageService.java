@@ -64,4 +64,14 @@ public class StorageService {
     public @NotNull IStorageService getStorageService() {
         return storageService;
     }
+
+    /**
+     * Shuts down the storage service and releases resources.
+     *
+     * @throws java.io.IOException if the shutdown operation fails
+     */
+    public void shutdown() throws java.io.IOException {
+        log.info("Shutting down storage({})", storageService);
+        storageService.shutdown();
+    }
 }

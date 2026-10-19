@@ -12,6 +12,7 @@ import io.github.floatingpointmc.sanctionmanager.core.service.CacheService;
 import io.github.floatingpointmc.sanctionmanager.core.service.EntryServiceCore;
 import io.github.floatingpointmc.sanctionmanager.core.service.StorageService;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,6 +25,7 @@ import java.util.*;
  * to the entry factory, entry service, storage service, and cache service.
  * </p>
  */
+@Slf4j
 public class SanctionManagerCore implements SanctionManager {
     private final @NotNull EntryService entryService;
     private final @NotNull EntryFactory entryFactory;
@@ -129,6 +131,10 @@ public class SanctionManagerCore implements SanctionManager {
             // Create typeManager before initializing storage, as storage needs it
             typeManager = new TypeManager(entryTypes);
             storageService.initialize();
+
+            // Restore relId counters from persistent storage
+            ((EntryServiceCore) entryService).restoreRelIdCounters(storageService.getStorageService());
+
             initialized = true;
             SanctionManagerAPI.setApi(this);
         }
@@ -137,14 +143,18 @@ public class SanctionManagerCore implements SanctionManager {
     /**
      * Shuts down the Core and clears the active API instance.
      * <p>
-     * After shutdown, service operations throw {@code IllegalStateException}. The storage backend is
-     * currently not shut down by this method, so open storage resources are not released. Cache backend
-     * resources, such as the Redis connection, are released.
+     * After shutdown, service operations throw {@code IllegalStateException}. Storage and cache backend
+     * resources are released.
      * </p>
      */
     public void shutdown() {
         synchronized (this) {
-//            storageService.shutdown();
+            try {
+                storageService.shutdown();
+            } catch (Exception e) {
+                // Log but don't fail shutdown
+                log.error("Failed to shutdown storage service", e);
+            }
             initialized = false;
             SanctionManagerAPI.clearApi();
             cacheService.shutdown();
