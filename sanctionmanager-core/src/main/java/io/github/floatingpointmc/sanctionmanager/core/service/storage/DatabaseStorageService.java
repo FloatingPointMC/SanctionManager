@@ -55,7 +55,7 @@ public class DatabaseStorageService implements IStorageService {
         config.setMaximumPoolSize(databaseConfig.getMaximumPoolSize());
         this.dataSource = new HikariDataSource(config);
         Class<? extends IDatabase> iDatabase = type.getDatabaseClass();
-        database = iDatabase.getDeclaredConstructor(HikariDataSource.class).newInstance(this.dataSource);
+        database = iDatabase.getDeclaredConstructor(SanctionManagerCore.class, HikariDataSource.class).newInstance(core, this.dataSource);
         database.initialize();
     }
 

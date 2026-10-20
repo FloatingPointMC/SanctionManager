@@ -24,7 +24,9 @@ import java.util.*;
  */
 @RequiredArgsConstructor
 public class TypeManager {
-    /** Map of type identifier to EntryType. Unmodifiable when built via {@link #TypeManager(List)}. */
+    /**
+     * Map of type identifier to EntryType. Unmodifiable when built via {@link #TypeManager(List)}.
+     */
     private final Map<String, EntryType> types;
 
     /**
@@ -64,5 +66,9 @@ public class TypeManager {
      */
     public @NotNull EntryType getType(@NotNull String type) {
         return types.get(type);
+    }
+
+    public @NotNull Collection<EntryType> getTypes() {
+        return Collections.unmodifiableCollection(types.values());
     }
 }
