@@ -28,8 +28,8 @@ import java.util.*;
  */
 @Slf4j
 public class SanctionManagerCore implements SanctionManager {
-    private final @NotNull EntryService entryService;
-    private final @NotNull EntryFactory entryFactory;
+    private final @NotNull EntryServiceCore entryService;
+    private final @NotNull EntryFactoryCore entryFactory;
     private final @NotNull StorageService storageService;
     private final @NotNull CacheService cacheService;
     private @Nullable TypeManager typeManager;
@@ -134,7 +134,7 @@ public class SanctionManagerCore implements SanctionManager {
             storageService.initialize();
 
             // Restore relId counters from persistent storage
-            ((EntryServiceCore) entryService).restoreRelIdCounters(storageService.getStorageService());
+            entryService.restoreRelIdCounters(storageService.getStorageService());
 
             initialized = true;
             SanctionManagerAPI.setApi(this);
