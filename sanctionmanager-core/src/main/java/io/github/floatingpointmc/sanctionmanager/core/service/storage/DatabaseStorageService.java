@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.DatabaseConfig;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.storage.sql.DatabaseType;
 import io.github.floatingpointmc.sanctionmanager.core.storage.sql.SanctionManagerDataSource;
 import io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.IDatabase;
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -85,7 +87,9 @@ public class DatabaseStorageService implements IStorageService {
      * @throws UnsupportedOperationException always
      */
     @Override
-    public long insertRecord(EntryPersisted entry) throws IOException {
+    public @NotNull Addition insertRecord(@NotNull EntrySnapshot entry, @NotNull Date executingTime, @Nullable Date expiryTime) throws IOException {
+        String tableName = "sm_data_" + entry.getType().getIdentifier();
+        database.insert(tableName, entry.getTarget(), entry.getReason(), executingTime, expiryTime, entry.getDataInternal());
         throw new UnsupportedOperationException("Database storage is not yet implemented");
     }
 

@@ -417,13 +417,6 @@ public class EntryServiceCore implements EntryService {
 
         EntrySnapshot tempSnapshot = (EntrySnapshot) unwrapped;
 
-        // Generate temporary IDs (storage may assign different ones)
-        long tempId = idCounter.incrementAndGet();
-        EntryType type = tempSnapshot.getType();
-        long relId = typeRelIdCounters
-                .computeIfAbsent(type.getIdentifier(), k -> new AtomicLong(0))
-                .incrementAndGet();
-
         // Calculate times
         Date executingTime = new Date();
         Date expiryTime = null;
@@ -432,21 +425,13 @@ public class EntryServiceCore implements EntryService {
             expiryTime = new Date(expiryMillis);
         }
 
-        // Create persistent snapshot
-        EntryPersisted snapshot = new EntryPersisted(
-                tempId, relId, type, tempSnapshot.getTarget(), tempSnapshot.getExecutor(),
-                expiryTime, executingTime, tempSnapshot.getReason(),
-                tempSnapshot.getDataInternal(),
-                null, null, false, null, 0
-        );
-
         // Store in persistent storage
         try {
             IStorageService storage = core.getStorageService().getStorageService();
-            long assignedId = storage.insertRecord(snapshot);
+            long assignedId = storage.insertRecord(tempSnapshot, executingTime, expiryTime);
 
             // Update snapshot with actual ID from storage
-            snapshot = new EntryPersisted(
+            EntryPersisted persisted = new EntryPersisted(
                     assignedId, relId, type, tempSnapshot.getTarget(), tempSnapshot.getExecutor(),
                     expiryTime, executingTime, tempSnapshot.getReason(),
                     tempSnapshot.getDataInternal(),
@@ -454,11 +439,11 @@ public class EntryServiceCore implements EntryService {
             );
 
             // Transition wrapper to persisted state immediately after storage commit
-            ((EntryWrapperImpl) entry).entry = snapshot;
+            ((EntryWrapperImpl) entry).entry = persisted;
 
             // Best-effort cache update: log failures without failing the operation
             try {
-                core.getCacheService().put(snapshot);
+                core.getCacheService().put(persisted);
                 core.getCacheService().invalidateAllQueryResults();
             } catch (Exception cacheEx) {
                 // Storage commit succeeded; cache update is best-effort

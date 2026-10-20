@@ -1,6 +1,12 @@
 package io.github.floatingpointmc.sanctionmanager.core.storage.sql.database;
 
+import com.google.gson.JsonObject;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.SQLException;
+import java.util.Date;
+import java.util.UUID;
 
 /**
  * Database backend interface for sanction persistence.
@@ -34,4 +40,6 @@ public interface IDatabase {
      * CF-02 FIX: Required for durable relId counters.
      */
     void persistMetadata() throws SQLException;
+
+    void insert(@NotNull String tableName, @NotNull UUID target, @Nullable String reason, @NotNull Date executingTime, @Nullable Date expiryTime, @Nullable JsonObject data);
 }

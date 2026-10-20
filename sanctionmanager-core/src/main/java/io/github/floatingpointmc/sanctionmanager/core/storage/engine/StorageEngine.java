@@ -2,6 +2,7 @@ package io.github.floatingpointmc.sanctionmanager.core.storage.engine;
 
 import io.github.floatingpointmc.sanctionmanager.core.management.TypeManager;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -203,7 +204,7 @@ public class StorageEngine {
      * @throws IOException if writing to the file fails
      * @throws StorageException if the encoded record is too large for a page
      */
-    public synchronized long insertRecord(EntryPersisted entry) throws IOException {
+    public synchronized long insertRecord(EntrySnapshot entry) throws IOException {
         // Assign ID
         long id = superblock.nextEntryId++;
         entry = new EntryPersisted(

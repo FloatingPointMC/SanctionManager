@@ -1,8 +1,12 @@
 package io.github.floatingpointmc.sanctionmanager.core.service.storage;
 
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,7 +38,7 @@ public interface IStorageService {
      * @return the assigned ID for the entry
      * @throws IOException if storage operation fails
      */
-    long insertRecord(EntryPersisted entry) throws IOException;
+    @NotNull Addition insertRecord(@NotNull EntrySnapshot entry, @NotNull Date executingTime, @Nullable Date expiryTime) throws IOException;
 
     /**
      * Retrieves an entry by its ID.

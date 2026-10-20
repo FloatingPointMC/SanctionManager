@@ -3,6 +3,7 @@ package io.github.floatingpointmc.sanctionmanager.core.service.storage;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.BinaryFileConfig;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.storage.engine.StorageEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,14 +72,14 @@ public class BinaryFileStorageService implements IStorageService {
     /**
      * {@inheritDoc}
      * <p>
-     * Delegates to {@link StorageEngine#insertRecord(EntryPersisted)}, which assigns a new ID; the ID of
+     * Delegates to {@link StorageEngine#insertRecord(EntrySnapshot)}, which assigns a new ID; the ID of
      * the given entry is ignored.
      * </p>
      *
      * @throws IllegalStateException if this service is not initialized
      */
     @Override
-    public long insertRecord(EntryPersisted entry) throws IOException {
+    public Addition insertRecord(EntrySnapshot entry) throws IOException {
         ensureInitialized();
         return engine.insertRecord(entry);
     }

@@ -1,14 +1,17 @@
 package io.github.floatingpointmc.sanctionmanager.core.storage.sql.database;
 
+import com.google.gson.JsonObject;
 import com.zaxxer.hikari.HikariDataSource;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
 @RequiredArgsConstructor
 public class MySQL implements IDatabase {
@@ -86,6 +89,12 @@ public class MySQL implements IDatabase {
                     "CONSTRAINT %s FOREIGN KEY (parent_id) " +
                     "REFERENCES sm_parent (id) ON DELETE CASCADE" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+    private static final String INSERT =
+            "INSERT INTO %s ";
+
+    private static final String INSERT_EXTRA =
+            "INSERT INTO %s ";
 
     private static byte[] uuidToBytes(@NotNull UUID uuid) {
         return ByteBuffer.allocate(16)
@@ -604,6 +613,17 @@ public class MySQL implements IDatabase {
     public void persistMetadata() throws SQLException {
         // CF-02 FIX: No-op until database metadata table is implemented.
         // Metadata is currently only persisted for binary file storage.
+    }
+
+    @Override
+    public void insert(@NotNull String tableName, @NotNull UUID target, @Nullable String reason, @NotNull Date executingTime, @Nullable Date expiryTime, @Nullable JsonObject data) {
+        try (Connection connection = dataSource.getConnection()) {
+            try (PreparedStatement statement = connection.prepareStatement(data == null ? INSERT : INSERT_EXTRA)) {
+                statement.setBytes(1, uuidToBytes(target));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @RequiredArgsConstructor
