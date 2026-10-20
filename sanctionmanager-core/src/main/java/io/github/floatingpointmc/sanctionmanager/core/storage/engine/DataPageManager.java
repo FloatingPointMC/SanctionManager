@@ -122,15 +122,17 @@ public class DataPageManager {
     /**
      * Updates a record in a data page.
      * <p>
-     * If the new record has the same length, it is overwritten in place. Otherwise the old slot is freed and
-     * the record is reinserted into the same page (compacting it if needed); it is never moved to another page.
-     * The implementation does not check that the record fits after compaction.
+     * If the new record has the same length, it is overwritten in place. Otherwise the record is deleted and
+     * a new insert is performed via {@link #insertRecord(byte[])}, which may place it in a different page.
+     * This prevents slot index corruption that would occur if compaction rearranged slots while trying to
+     * reuse the old slot position.
      * </p>
      *
      * @param location       the current location of the record
      * @param newRecordBytes the new encoded record
      * @return the location of the updated record (may be different from input location)
      * @throws IOException if reading or writing pages fails
+     * @throws StorageException if the new record is too large
      */
     public StorageEngine.EntryRecordLocation updateRecord(StorageEngine.EntryRecordLocation location, byte[] newRecordBytes) throws IOException {
         byte[] pageData = pageManager.readPage(location.pageId);
@@ -150,12 +152,12 @@ public class DataPageManager {
             pageManager.writePage(location.pageId, pageData);
             return location; // Same location
         } else {
-            // Mark old slot as free and insert as new record
-            markSlotFree(pageData, location.slotIndex);
-            pageManager.writePage(location.pageId, pageData);
-
-            // Insert new record (may go to different page) and return new location
-            return insertIntoPage(location.pageId, newRecordBytes);
+            // Variable-length update: delete old record and perform fresh insert.
+            // CF-07 FIX: Cannot safely reuse the same slot after potential compaction,
+            // because compaction changes slot indices but caller's indexes still point
+            // to old slot numbers. Use insertRecord which handles allocation correctly.
+            deleteRecord(location);
+            return insertRecord(newRecordBytes);
         }
     }
 

@@ -56,6 +56,9 @@ public class StorageEngine {
      * in-memory indexes are rebuilt by scanning all pages; pages and records that cannot be read or decoded are
      * skipped and logged.
      * </p>
+     * <p>
+     * CF-03 FIX: Closes pageManager on any failure to prevent resource leaks.
+     * </p>
      *
      * @throws IOException if the file cannot be opened, read, or written
      * @throws StorageException if the superblock is invalid (bad magic, version, page size, page count, or CRC)
@@ -71,8 +74,21 @@ public class StorageEngine {
                 // Open existing file
                 openExistingFile();
             }
-        } catch (IOException e) {
-            pageManager.shutdown();
+        } catch (IOException | StorageException e) {
+            // CF-03 FIX: Close pageManager on failure
+            try {
+                pageManager.shutdown();
+            } catch (Exception closeEx) {
+                e.addSuppressed(closeEx);
+            }
+            throw e;
+        } catch (RuntimeException e) {
+            // CF-03 FIX: Catch unchecked exceptions too
+            try {
+                pageManager.shutdown();
+            } catch (Exception closeEx) {
+                e.addSuppressed(closeEx);
+            }
             throw e;
         }
     }
@@ -178,13 +194,16 @@ public class StorageEngine {
      * The ID of the given entry is ignored; the record is stored with the next ID from the superblock and with
      * version 0. The given entry object is not modified.
      * </p>
+     * <p>
+     * CF-08 FIX: Synchronized to prevent concurrent ID assignment and page allocation races.
+     * </p>
      *
      * @param entry the entry to insert
      * @return the assigned ID
      * @throws IOException if writing to the file fails
      * @throws StorageException if the encoded record is too large for a page
      */
-    public long insertRecord(EntryPersisted entry) throws IOException {
+    public synchronized long insertRecord(EntryPersisted entry) throws IOException {
         // Assign ID
         long id = superblock.nextEntryId++;
         entry = new EntryPersisted(
@@ -277,12 +296,15 @@ public class StorageEngine {
 
     /**
      * Replaces the stored record that has the same ID as the given entry, and updates the indexes.
+     * <p>
+     * CF-08 FIX: Synchronized to prevent races between read-old/write-new/update-indexes.
+     * </p>
      *
      * @param entry the new record content; its ID selects the record to replace
      * @throws IOException if reading or writing the file fails
      * @throws StorageException if no record with the entry's ID exists, or the record cannot be read or written
      */
-    public void updateRecord(EntryPersisted entry) throws IOException {
+    public synchronized void updateRecord(EntryPersisted entry) throws IOException {
         // Find existing location
         EntryRecordLocation location = primaryIndex.get(entry.getId());
         if (location == null) {
@@ -313,12 +335,15 @@ public class StorageEngine {
      * <p>
      * Does nothing if no record with the given ID exists.
      * </p>
+     * <p>
+     * CF-08 FIX: Synchronized to prevent races during deletion.
+     * </p>
      *
      * @param id the record ID
      * @throws IOException if reading or writing the file fails
      * @throws StorageException if the record cannot be read
      */
-    public void deleteRecord(long id) throws IOException {
+    public synchronized void deleteRecord(long id) throws IOException {
         EntryRecordLocation location = primaryIndex.remove(id);
         if (location == null) {
             return;
@@ -399,12 +424,33 @@ public class StorageEngine {
 
     /**
      * Writes the superblock and closes the storage file.
+     * <p>
+     * CF-03 FIX: Always closes pageManager even if persist fails, and preserves the original exception.
+     * </p>
      *
      * @throws IOException if writing or closing the file fails
      */
     public void shutdown() throws IOException {
-        persistSuperblock();
-        pageManager.shutdown();
+        IOException persistException = null;
+        try {
+            persistSuperblock();
+        } catch (IOException e) {
+            persistException = e;
+        }
+
+        try {
+            pageManager.shutdown();
+        } catch (IOException e) {
+            if (persistException != null) {
+                persistException.addSuppressed(e);
+            } else {
+                throw e;
+            }
+        }
+
+        if (persistException != null) {
+            throw persistException;
+        }
     }
 
     /**

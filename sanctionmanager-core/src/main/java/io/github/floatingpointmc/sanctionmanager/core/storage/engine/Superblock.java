@@ -155,14 +155,38 @@ public class Superblock {
 
     /**
      * Encodes this superblock into the given buffer and zero-fills the rest of it.
+     * <p>
+     * CF-14 FIX: Pre-validates that all metadata fits within the page before writing.
+     * </p>
      *
      * @param data     the destination buffer, normally one page
      * @param pageSize the page size to record
-     * @throws StorageException if {@code data} is smaller than the superblock header
+     * @throws StorageException if {@code data} is smaller than the superblock header or if metadata exceeds capacity
      */
     public void toBytes(byte[] data, int pageSize) throws StorageException {
         if (data.length < HEADER_SIZE) {
             throw new StorageException("Superblock buffer too small");
+        }
+
+        // CF-14 FIX: Pre-calculate metadata size to ensure it fits
+        java.util.Map<String, Integer> safeTypeIdMap = typeIdMap != null ? typeIdMap : java.util.Collections.emptyMap();
+        java.util.Map<String, Long> safeRelIdCounters = typeRelIdCounters != null ? typeRelIdCounters : java.util.Collections.emptyMap();
+
+        int metadataSize = HEADER_SIZE;
+        metadataSize += 4; // typeMapCount
+        for (java.util.Map.Entry<String, Integer> entry : safeTypeIdMap.entrySet()) {
+            byte[] typeIdBytes = entry.getKey().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            metadataSize += 4 + typeIdBytes.length + 4; // typeIdLen + typeId + numericId
+        }
+        metadataSize += 4; // relIdCounterCount
+        for (java.util.Map.Entry<String, Long> entry : safeRelIdCounters.entrySet()) {
+            byte[] typeIdBytes = entry.getKey().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            metadataSize += 4 + typeIdBytes.length + 8; // typeIdLen + typeId + counter
+        }
+
+        if (metadataSize > data.length) {
+            throw new StorageException("Superblock metadata too large: " + metadataSize + " bytes required but page is " + data.length + " bytes. " +
+                    "Reduce number of types (" + safeTypeIdMap.size() + ") or increase page size.");
         }
 
         PageBuffer buf = new PageBuffer(data);
@@ -193,10 +217,6 @@ public class Superblock {
         buf.putInt(crc);
 
         // Write metadata section (type mappings and relId counters)
-        // Ensure typeIdMap and typeRelIdCounters are not null
-        java.util.Map<String, Integer> safeTypeIdMap = typeIdMap != null ? typeIdMap : java.util.Collections.emptyMap();
-        java.util.Map<String, Long> safeRelIdCounters = typeRelIdCounters != null ? typeRelIdCounters : java.util.Collections.emptyMap();
-
         buf.putInt(safeTypeIdMap.size());
         for (java.util.Map.Entry<String, Integer> entry : safeTypeIdMap.entrySet()) {
             byte[] typeIdBytes = entry.getKey().getBytes(java.nio.charset.StandardCharsets.UTF_8);

@@ -47,7 +47,7 @@ public class TypeMappingPersistenceTest {
     }
 
     @AfterEach
-    public void tearDown() {
+    public void tearDown() throws IOException {
         if (core != null && core.isInitialized()) {
             core.shutdown();
         }

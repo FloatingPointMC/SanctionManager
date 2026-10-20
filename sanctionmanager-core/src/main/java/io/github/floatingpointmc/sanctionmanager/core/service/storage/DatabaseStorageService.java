@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,27 +37,43 @@ public class DatabaseStorageService implements IStorageService {
     /**
      * Initializes the database storage implementation.
      * <p>
-     * Database support is not yet implemented. This method throws {@code UnsupportedOperationException}.
+     * CF-03 FIX: Cleanup resources on any initialization failure.
      * </p>
      *
-     * @throws UnsupportedOperationException always, as database support is not implemented
+     * @throws Exception if initialization fails
      */
     @SneakyThrows
     @Override
     public void initialize() {
-        SanctionManagerDataSource dataSource = new SanctionManagerDataSource(
-                databaseConfig.getJdbcUrl(),
-                databaseConfig.getCredentialProvider()
-        );
-        DatabaseType type = DatabaseType.parse(databaseConfig.getJdbcUrl());
-        HikariConfig config = new HikariConfig();
-        config.setDataSource(dataSource);
-        config.setPoolName("SanctionManager-HikariCP-" + type);
-        config.setMaximumPoolSize(databaseConfig.getMaximumPoolSize());
-        this.dataSource = new HikariDataSource(config);
-        Class<? extends IDatabase> iDatabase = type.getDatabaseClass();
-        database = iDatabase.getDeclaredConstructor(SanctionManagerCore.class, HikariDataSource.class).newInstance(core, this.dataSource);
-        database.initialize();
+        HikariDataSource tempDataSource = null;
+        try {
+            SanctionManagerDataSource dataSource = new SanctionManagerDataSource(
+                    databaseConfig.getJdbcUrl(),
+                    databaseConfig.getCredentialProvider()
+            );
+            DatabaseType type = DatabaseType.parse(databaseConfig.getJdbcUrl());
+            HikariConfig config = new HikariConfig();
+            config.setDataSource(dataSource);
+            config.setPoolName("SanctionManager-HikariCP-" + type);
+            config.setMaximumPoolSize(databaseConfig.getMaximumPoolSize());
+            tempDataSource = new HikariDataSource(config);
+            Class<? extends IDatabase> iDatabase = type.getDatabaseClass();
+            database = iDatabase.getDeclaredConstructor(SanctionManagerCore.class, HikariDataSource.class).newInstance(core, tempDataSource);
+            database.initialize();
+            // Only assign to field after successful initialization
+            this.dataSource = tempDataSource;
+        } catch (Exception e) {
+            // CF-03 FIX: Close data source if initialization fails
+            if (tempDataSource != null) {
+                try {
+                    tempDataSource.close();
+                } catch (Exception closeEx) {
+                    e.addSuppressed(closeEx);
+                }
+            }
+            database = null;
+            throw e;
+        }
     }
 
     /**
@@ -163,22 +180,50 @@ public class DatabaseStorageService implements IStorageService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     * <p>
+     * CF-01 FIX: Delegates to database implementation.
+     * </p>
+     */
     @Override
     public java.util.Map<String, Long> getTypeRelIdCounters() {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        return database.getTypeRelIdCounters();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     * <p>
+     * CF-01 FIX: Delegates to database implementation.
+     * </p>
+     */
     @Override
     public void updateTypeRelIdCounter(String typeIdentifier, long nextRelId) {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        database.updateTypeRelIdCounter(typeIdentifier, nextRelId);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     * <p>
+     * CF-01 FIX: Delegates to database implementation.
+     * </p>
+     */
     @Override
     public void persistMetadata() throws IOException {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            database.persistMetadata();
+        } catch (SQLException e) {
+            throw new IOException("Failed to persist metadata", e);
+        }
     }
 
     @Override

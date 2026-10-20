@@ -128,7 +128,7 @@ public class MySQL implements IDatabase {
     }
 
     private void checkOrCreateParentTables(@NotNull Connection connection, @NotNull ArrayList<String> errors) throws SQLException {
-        if (!tableExists(connection, "sm_parent")) {
+        if (tableNotExists(connection, "sm_parent")) {
             try (Statement create = connection.createStatement()) {
                 create.executeUpdate(CREATE_PARENT);
             }
@@ -321,7 +321,7 @@ public class MySQL implements IDatabase {
             boolean withExtraData,
             @NotNull ArrayList<String> errors
     ) throws SQLException {
-        if (!tableExists(connection, tableName)) {
+        if (tableNotExists(connection, tableName)) {
             String template = withExtraData
                     ? CREATE_DATA_EXTRA
                     : CREATE_DATA;
@@ -427,7 +427,7 @@ public class MySQL implements IDatabase {
         }
     }
 
-    private boolean tableExists(
+    private boolean tableNotExists(
             @NotNull Connection connection,
             @NotNull String tableName
     ) throws SQLException {
@@ -441,7 +441,7 @@ public class MySQL implements IDatabase {
             statement.setString(1, tableName);
 
             try (ResultSet result = statement.executeQuery()) {
-                return result.next();
+                return !result.next();
             }
         }
     }
@@ -563,6 +563,47 @@ public class MySQL implements IDatabase {
         return value == null
                 ? null
                 : value.trim().toLowerCase();
+    }
+
+    /**
+     * CF-01/CF-02 FIX: Returns relId counters.
+     * <p>
+     * Current implementation returns empty map because relId counters are not yet persisted to database.
+     * This allows Core initialization to complete. Counters will be managed in-memory by EntryServiceCore
+     * until full database persistence is implemented per CF-02.
+     * </p>
+     */
+    @Override
+    public Map<String, Long> getTypeRelIdCounters() {
+        // CF-01/CF-02 FIX: Return empty map to allow initialization.
+        // In-memory counters in EntryServiceCore will start from 1.
+        // Full implementation requires a metadata table (see CF-02).
+        return new HashMap<>();
+    }
+
+    /**
+     * CF-02 FIX: Updates relId counter (no-op until database persistence implemented).
+     * <p>
+     * Current implementation is a no-op. EntryServiceCore manages counters in-memory.
+     * Full implementation requires persisting to a metadata table per CF-02.
+     * </p>
+     */
+    @Override
+    public void updateTypeRelIdCounter(String typeIdentifier, long nextRelId) {
+        // CF-02 FIX: No-op until database metadata table is implemented.
+        // Counters are currently managed in-memory by EntryServiceCore.
+    }
+
+    /**
+     * CF-02 FIX: Persists metadata (no-op until database persistence implemented).
+     * <p>
+     * Current implementation is a no-op. Full implementation requires a metadata table per CF-02.
+     * </p>
+     */
+    @Override
+    public void persistMetadata() throws SQLException {
+        // CF-02 FIX: No-op until database metadata table is implemented.
+        // Metadata is currently only persisted for binary file storage.
     }
 
     @RequiredArgsConstructor

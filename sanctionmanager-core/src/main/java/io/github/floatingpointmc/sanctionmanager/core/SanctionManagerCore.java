@@ -147,13 +147,42 @@ public class SanctionManagerCore implements SanctionManager {
      * After shutdown, service operations throw {@code IllegalStateException}. Storage and cache backend
      * resources are released.
      * </p>
+     * <p>
+     * CF-03 FIX: Always clears state and closes cache even if storage shutdown fails.
+     * </p>
+     *
+     * @throws IOException if storage shutdown fails
      */
     public void shutdown() throws IOException {
         synchronized (this) {
-            storageService.shutdown();
+            IOException storageException = null;
+            RuntimeException cacheException = null;
+
+            try {
+                storageService.shutdown();
+            } catch (IOException e) {
+                storageException = e;
+            }
+
+            // Always clear state even if storage fails
             initialized = false;
             SanctionManagerAPI.clearApi();
-            cacheService.shutdown();
+
+            try {
+                cacheService.shutdown();
+            } catch (RuntimeException e) {
+                cacheException = e;
+            }
+
+            // Throw the first exception, with the second suppressed if both failed
+            if (storageException != null) {
+                if (cacheException != null) {
+                    storageException.addSuppressed(cacheException);
+                }
+                throw storageException;
+            } else if (cacheException != null) {
+                throw cacheException;
+            }
         }
     }
 
