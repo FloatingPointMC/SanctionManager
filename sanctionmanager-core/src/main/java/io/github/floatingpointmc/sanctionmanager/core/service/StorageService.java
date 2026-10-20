@@ -8,6 +8,8 @@ import io.github.floatingpointmc.sanctionmanager.core.service.storage.IStorageSe
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+
 /**
  * Facade for the persistence storage layer.
  * <p>
@@ -70,7 +72,7 @@ public class StorageService {
      *
      * @throws java.io.IOException if the shutdown operation fails
      */
-    public void shutdown() throws java.io.IOException {
+    public void shutdown() throws IOException {
         log.info("Shutting down storage({})", storageService);
         storageService.shutdown();
     }

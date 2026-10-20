@@ -22,4 +22,5 @@ public final class DatabaseConfig {
     private final @NotNull String jdbcUrl;
     /** Provider for database credentials. */
     private final @NotNull CredentialProvider credentialProvider;
+    private final int maximumPoolSize;
 }

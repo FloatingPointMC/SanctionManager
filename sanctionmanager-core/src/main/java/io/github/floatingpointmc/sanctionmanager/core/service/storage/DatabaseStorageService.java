@@ -1,10 +1,17 @@
 package io.github.floatingpointmc.sanctionmanager.core.service.storage;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.config.storage.DatabaseConfig;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
+import io.github.floatingpointmc.sanctionmanager.core.storage.sql.DatabaseType;
+import io.github.floatingpointmc.sanctionmanager.core.storage.sql.SanctionManagerDataSource;
+import io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.IDatabase;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.List;
@@ -23,6 +30,8 @@ import java.util.UUID;
 public class DatabaseStorageService implements IStorageService {
     private final @NotNull SanctionManagerCore core;
     private final @NotNull DatabaseConfig databaseConfig;
+    private @Nullable HikariDataSource dataSource;
+    private @Nullable IDatabase database;
 
     /**
      * Initializes the database storage implementation.
@@ -32,9 +41,22 @@ public class DatabaseStorageService implements IStorageService {
      *
      * @throws UnsupportedOperationException always, as database support is not implemented
      */
+    @SneakyThrows
     @Override
     public void initialize() {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        SanctionManagerDataSource dataSource = new SanctionManagerDataSource(
+                databaseConfig.getJdbcUrl(),
+                databaseConfig.getCredentialProvider()
+        );
+        DatabaseType type = DatabaseType.parse(databaseConfig.getJdbcUrl());
+        HikariConfig config = new HikariConfig();
+        config.setDataSource(dataSource);
+        config.setPoolName("SanctionManager-HikariCP-" + type);
+        config.setMaximumPoolSize(databaseConfig.getMaximumPoolSize());
+        this.dataSource = new HikariDataSource(config);
+        Class<? extends IDatabase> iDatabase = type.getDatabaseClass();
+        database = iDatabase.getDeclaredConstructor(HikariDataSource.class).newInstance(this.dataSource);
+        database.initialize();
     }
 
     /**
@@ -136,7 +158,9 @@ public class DatabaseStorageService implements IStorageService {
      */
     @Override
     public void shutdown() throws IOException {
-        // No-op for unimplemented database storage
+        if (dataSource != null) {
+            dataSource.close();
+        }
     }
 
     /** {@inheritDoc} */

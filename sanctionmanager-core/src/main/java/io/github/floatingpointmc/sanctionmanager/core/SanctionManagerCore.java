@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -147,14 +148,9 @@ public class SanctionManagerCore implements SanctionManager {
      * resources are released.
      * </p>
      */
-    public void shutdown() {
+    public void shutdown() throws IOException {
         synchronized (this) {
-            try {
-                storageService.shutdown();
-            } catch (Exception e) {
-                // Log but don't fail shutdown
-                log.error("Failed to shutdown storage service", e);
-            }
+            storageService.shutdown();
             initialized = false;
             SanctionManagerAPI.clearApi();
             cacheService.shutdown();

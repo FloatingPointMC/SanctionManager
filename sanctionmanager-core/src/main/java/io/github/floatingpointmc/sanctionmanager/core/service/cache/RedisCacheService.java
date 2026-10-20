@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Redis-backed cache service implementation using the Lettuce client.
