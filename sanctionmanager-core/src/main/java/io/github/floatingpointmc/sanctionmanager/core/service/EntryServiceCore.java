@@ -102,7 +102,8 @@ public class EntryServiceCore implements EntryService {
         // Cache-first: construct query key
         QueryKey.TargetQuery queryKey = new QueryKey.TargetQuery(target, options);
 
-        // Check cache
+        // Check cache and capture generation
+        long generation = core.getCacheService().getQueryGeneration();
         Optional<List<EntryPersisted>> cached = core.getCacheService().getQueryResult(queryKey);
         if (cached.isPresent()) {
             // Cache hit - return wrapped entries
@@ -138,8 +139,8 @@ public class EntryServiceCore implements EntryService {
             result.sort(Comparator.comparing(EntryPersisted::getExecutingTime)
                     .thenComparingLong(EntryPersisted::getId));
 
-            // Populate query result cache
-            core.getCacheService().putQueryResult(queryKey, result);
+            // Populate query result cache only if generation hasn't changed (prevents stale cache after concurrent invalidation)
+            core.getCacheService().putQueryResultIfGenerationMatches(queryKey, result, generation);
 
             return result.stream()
                     .map(this::wrapWithDefensiveCopy)
@@ -176,7 +177,8 @@ public class EntryServiceCore implements EntryService {
         // Cache-first: construct query key
         QueryKey.AllQuery queryKey = new QueryKey.AllQuery(options, types);
 
-        // Check cache
+        // Check cache and capture generation
+        long generation = core.getCacheService().getQueryGeneration();
         Optional<List<EntryPersisted>> cached = core.getCacheService().getQueryResult(queryKey);
         if (cached.isPresent()) {
             // Cache hit - return wrapped entries
@@ -213,8 +215,8 @@ public class EntryServiceCore implements EntryService {
             result.sort(Comparator.comparing(EntryPersisted::getExecutingTime)
                     .thenComparingLong(EntryPersisted::getId));
 
-            // Populate query result cache
-            core.getCacheService().putQueryResult(queryKey, result);
+            // Populate query result cache only if generation hasn't changed (prevents stale cache after concurrent invalidation)
+            core.getCacheService().putQueryResultIfGenerationMatches(queryKey, result, generation);
 
             return result.stream()
                     .map(this::wrapWithDefensiveCopy)
@@ -260,7 +262,8 @@ public class EntryServiceCore implements EntryService {
         // Cache-first: construct query key
         QueryKey.LatestActiveQuery queryKey = new QueryKey.LatestActiveQuery(target, types);
 
-        // Check cache
+        // Check cache and capture generation
+        long generation = core.getCacheService().getQueryGeneration();
         Optional<List<EntryPersisted>> cached = core.getCacheService().getQueryResult(queryKey);
         if (cached.isPresent()) {
             // Cache hit - return the latest (should be single entry or empty)
@@ -292,10 +295,10 @@ public class EntryServiceCore implements EntryService {
                     .max(Comparator.comparing(EntryPersisted::getExecutingTime)
                             .thenComparingLong(EntryPersisted::getId));
 
-            // Populate query result cache (single-entry list or empty)
+            // Populate query result cache only if generation hasn't changed (prevents stale cache after concurrent invalidation)
             List<EntryPersisted> resultList = latest.map(Collections::singletonList)
                     .orElse(Collections.emptyList());
-            core.getCacheService().putQueryResult(queryKey, resultList);
+            core.getCacheService().putQueryResultIfGenerationMatches(queryKey, resultList, generation);
 
             return latest.map(EntryWrapperImpl::new);
         } catch (IOException e) {
@@ -450,6 +453,9 @@ public class EntryServiceCore implements EntryService {
                     null, null, false, null, 0
             );
 
+            // Transition wrapper to persisted state immediately after storage commit
+            ((EntryWrapperImpl) entry).entry = snapshot;
+
             // Best-effort cache update: log failures without failing the operation
             try {
                 core.getCacheService().put(snapshot);
@@ -459,11 +465,12 @@ public class EntryServiceCore implements EntryService {
                 log.warn("Cache update failed after successful storage commit (entry ID {})", assignedId, cacheEx);
             }
 
-            // Persist relId counters
-            persistRelIdCounters();
-
-            // Transition wrapper to persisted state
-            ((EntryWrapperImpl) entry).entry = snapshot;
+            // Persist relId counters (best-effort)
+            try {
+                persistRelIdCounters();
+            } catch (IOException metaEx) {
+                log.warn("Failed to persist relId counters after successful entry creation (entry ID {})", assignedId, metaEx);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to store entry", e);
         }
@@ -522,6 +529,9 @@ public class EntryServiceCore implements EntryService {
         try {
             IStorageService storage = core.getStorageService().getStorageService();
             storage.updateRecord(updated);
+
+            // Update the wrapper so the caller sees the new data
+            wrapper.entry = updated;
 
             // Best-effort cache update after successful storage commit
             try {

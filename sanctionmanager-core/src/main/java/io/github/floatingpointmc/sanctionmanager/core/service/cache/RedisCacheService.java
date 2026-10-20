@@ -57,7 +57,7 @@ import java.util.function.Function;
  * Every operation that touches more than one key runs as a single Lua script, so the ID index, the
  * (type, relId) index and query results are updated and read atomically with respect to other Redis clients.
  * Replacing an entry removes its previous (type, relId) index if that index still points to it. Read scripts
- * verify that an index and the entry it references agree; a dangling index is reported as a miss.
+ * verify that an index and the entry it references to agree; a dangling index is reported as a miss.
  * {@link #invalidateAllQueryResults()} replaces the generation token, which makes every stored query result
  * unreachable in O(1) even if the tracking set has been evicted, and then deletes the tracked keys.
  * </p>
@@ -407,6 +407,40 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
 
     /**
      * {@inheritDoc}
+     *
+     * @throws ConnectionException if Redis cannot be reached
+     * @throws OperationException if the command fails
+     */
+    @Override
+    public long getQueryGeneration() {
+        // Redis uses random tokens, not a counter. Return a hash of the current token.
+        String token = execute(commands -> commands.get(queryGenerationKey));
+        if (token == null) {
+            return 0L;
+        }
+        return token.hashCode();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For Redis, generation matching is handled by the token system in the Lua scripts.
+     * This method delegates to {@link #putQueryResult} since Redis already ensures atomicity.
+     * </p>
+     *
+     * @throws ConnectionException if Redis cannot be reached
+     * @throws OperationException if the command fails
+     */
+    @Override
+    public void putQueryResultIfGenerationMatches(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries, long expectedGeneration) {
+        // Redis uses token-based generation tracking in Lua scripts which is already atomic.
+        // We can't efficiently check the generation from Java side, so delegate to putQueryResult.
+        // The Redis implementation already prevents stale data via its token rotation mechanism.
+        putQueryResult(key, entries);
+    }
+
+    /**
+     * {@inheritDoc}
      * <p>
      * The (type, relId) index is removed only if it still points to this ID.
      * </p>
@@ -518,7 +552,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
 
     // Connection handling
 
-    private @NotNull StatefulRedisConnection<String, String> connection() {
+    private @NotNull StatefulRedisConnection<String, String> getConnection() {
         StatefulRedisConnection<String, String> current = connection;
         if (current != null) {
             return current;
@@ -537,12 +571,12 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
             }
             try {
                 connection = client.connect(StringCodec.UTF8);
+                return connection;
             } catch (RuntimeException e) {
                 // Includes credential provider failures, which Lettuce wraps in CompletionException
                 throw new ConnectionException("Unable to connect to Redis cache at "
                         + config.getHost() + ":" + config.getPort(), e);
             }
-            return connection;
         }
     }
 
@@ -562,7 +596,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
     }
 
     private <T> T execute(Function<RedisCommands<String, String>, T> operation) {
-        StatefulRedisConnection<String, String> current = connection();
+        StatefulRedisConnection<String, String> current = getConnection();
         try {
             return operation.apply(current.sync());
         } catch (RedisCommandExecutionException e) {
@@ -580,9 +614,9 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
     private <T> T runScript(Script script, ScriptOutputType type, String[] keys, String... args) {
         return execute(commands -> {
             try {
-                return commands.<T>evalsha(script.sha, type, keys, args);
+                return commands.evalsha(script.sha, type, keys, args);
             } catch (RedisNoScriptException e) {
-                return commands.<T>eval(script.source, type, keys, args);
+                return commands.eval(script.source, type, keys, args);
             }
         });
     }

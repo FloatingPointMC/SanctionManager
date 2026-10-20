@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.sanctionmanager.core.service;
 
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
@@ -86,7 +87,7 @@ public class EntryServiceCoreCacheTest {
         // Create and execute entry
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
-        Entry entry = entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
 
         // Reset counter BEFORE execute to exclude execute's storage operations
         storageCounter.reset();
@@ -120,7 +121,7 @@ public class EntryServiceCoreCacheTest {
         // Create and execute entry
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
-        Entry entry = entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
         entryService.execute(entry);
 
         String type = entry.getType().getIdentifier();
@@ -149,7 +150,7 @@ public class EntryServiceCoreCacheTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
         entryService.execute(entry);
 
         QueryOptions options = QueryOptions.create();
@@ -172,7 +173,7 @@ public class EntryServiceCoreCacheTest {
     @Test
     public void testQueryAllCacheHit() {
         UUID executor = UUID.randomUUID();
-        Entry entry = entryFactory.create(testType.getIdentifier(), UUID.randomUUID(), executor, "Test", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(testType.getIdentifier(), UUID.randomUUID(), executor, "Test", null);
         entryService.execute(entry);
 
         QueryOptions options = QueryOptions.create();
@@ -197,7 +198,7 @@ public class EntryServiceCoreCacheTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
         entryService.execute(entry);
 
         // Reset counter
@@ -220,7 +221,7 @@ public class EntryServiceCoreCacheTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
         entryService.execute(entry);
 
         QueryOptions options = QueryOptions.create().includeWithdrawn(true);
@@ -274,7 +275,7 @@ public class EntryServiceCoreCacheTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(testType.getIdentifier(), target, executor, "Test", null);
         entryService.execute(entry);
 
         // Withdraw the entry

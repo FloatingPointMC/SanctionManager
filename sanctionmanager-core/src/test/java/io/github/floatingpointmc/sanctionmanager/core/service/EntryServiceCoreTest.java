@@ -2,6 +2,7 @@ package io.github.floatingpointmc.sanctionmanager.core.service;
 
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
+import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
@@ -117,7 +118,7 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create and execute entry
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         // Query by ID
@@ -135,10 +136,10 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create and execute multiple entries for same target
-        Entry entry1 = entryFactory.create(banType.getIdentifier(), target, executor, "Ban 1", null);
+        EntryWrapper entry1 = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Ban 1", null);
         entryService.execute(entry1);
 
-        Entry entry2 = entryFactory.create(banType.getIdentifier(), target, executor, "Ban 2", null);
+        EntryWrapper entry2 = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Ban 2", null);
         entryService.execute(entry2);
 
         // Query by target
@@ -155,7 +156,7 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create and execute entry
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         // Query by type and relId
@@ -171,7 +172,7 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create multiple entries, with delays to ensure different timestamps
-        Entry entry1 = entryFactory.create(banType.getIdentifier(), target, executor, "Ban 1", null);
+        EntryWrapper entry1 = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Ban 1", null);
         entryService.execute(entry1);
 
         try {
@@ -179,7 +180,7 @@ public class EntryServiceCoreTest {
         } catch (InterruptedException ignored) {
         }
 
-        Entry entry2 = entryFactory.create(banType.getIdentifier(), target, executor, "Ban 2", null);
+        EntryWrapper entry2 = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Ban 2", null);
         entryService.execute(entry2);
 
         // Query latest active
@@ -193,10 +194,10 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create entries of different types
-        Entry ban1 = entryFactory.create(banType.getIdentifier(), UUID.randomUUID(), executor, "Ban 1", null);
+        EntryWrapper ban1 = (EntryWrapper) entryFactory.create(banType.getIdentifier(), UUID.randomUUID(), executor, "Ban 1", null);
         entryService.execute(ban1);
 
-        Entry mute1 = entryFactory.create(muteType.getIdentifier(), UUID.randomUUID(), executor, "Mute 1", null);
+        EntryWrapper mute1 = (EntryWrapper) entryFactory.create(muteType.getIdentifier(), UUID.randomUUID(), executor, "Mute 1", null);
         entryService.execute(mute1);
 
         // Query all
@@ -217,7 +218,7 @@ public class EntryServiceCoreTest {
         UUID withdrawnBy = UUID.randomUUID();
 
         // Create and execute entry
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         // Withdraw
@@ -239,7 +240,7 @@ public class EntryServiceCoreTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         // Withdraw once
@@ -256,7 +257,7 @@ public class EntryServiceCoreTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         // Withdraw
@@ -278,7 +279,7 @@ public class EntryServiceCoreTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         // Try to update withdraw reason on non-withdrawn entry
@@ -295,7 +296,7 @@ public class EntryServiceCoreTest {
         JsonObject originalData = new JsonObject();
         originalData.addProperty("key1", "value1");
 
-        Entry entry = entryFactory.create(kickType.getIdentifier(), target, executor, "Test kick", null, originalData);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(kickType.getIdentifier(), target, executor, "Test kick", null, originalData);
         entryService.execute(entry);
 
         // Update data
@@ -323,7 +324,7 @@ public class EntryServiceCoreTest {
         JsonObject originalData = new JsonObject();
         originalData.addProperty("key1", "value1");
 
-        Entry entry = entryFactory.create(kickType.getIdentifier(), target, executor, "Test kick", null, originalData);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(kickType.getIdentifier(), target, executor, "Test kick", null, originalData);
         entryService.execute(entry);
 
         // Withdraw
@@ -341,7 +342,7 @@ public class EntryServiceCoreTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         long id = entry.getId();
@@ -359,7 +360,7 @@ public class EntryServiceCoreTest {
         UUID target = UUID.randomUUID();
         UUID executor = UUID.randomUUID();
 
-        Entry entry = entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
+        EntryWrapper entry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Test ban", null);
         entryService.execute(entry);
 
         long id = entry.getId();
@@ -379,13 +380,13 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create entries
-        Entry ban = entryFactory.create(banType.getIdentifier(), target, executor, "Ban", null);
+        EntryWrapper ban = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Ban", null);
         entryService.execute(ban);
 
-        Entry mute = entryFactory.create(muteType.getIdentifier(), target, executor, "Mute", null);
+        EntryWrapper mute = (EntryWrapper) entryFactory.create(muteType.getIdentifier(), target, executor, "Mute", null);
         entryService.execute(mute);
 
-        Entry withdrawn = entryFactory.create(banType.getIdentifier(), target, executor, "Withdrawn ban", null);
+        EntryWrapper withdrawn = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Withdrawn ban", null);
         entryService.execute(withdrawn);
         entryService.withdraw(withdrawn, UUID.randomUUID(), "Test withdrawal");
 
@@ -413,7 +414,7 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create first entry and withdraw it
-        Entry entry1 = entryFactory.create(banType.getIdentifier(), target, executor, "First ban", null);
+        EntryWrapper entry1 = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "First ban", null);
         entryService.execute(entry1);
         entryService.withdraw(entry1, UUID.randomUUID(), "Withdrawn");
 
@@ -423,7 +424,7 @@ public class EntryServiceCoreTest {
         }
 
         // Create second active entry
-        Entry entry2 = entryFactory.create(banType.getIdentifier(), target, executor, "Second ban", null);
+        EntryWrapper entry2 = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Second ban", null);
         entryService.execute(entry2);
 
         // Query latest active - should return entry2, not entry1
@@ -438,7 +439,7 @@ public class EntryServiceCoreTest {
         UUID executor = UUID.randomUUID();
 
         // Create expired entry (1ms duration)
-        Entry expiredEntry = entryFactory.create(banType.getIdentifier(), target, executor, "Expired ban", Duration.ofMillis(1));
+        EntryWrapper expiredEntry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Expired ban", Duration.ofMillis(1));
         entryService.execute(expiredEntry);
 
         try {
@@ -447,7 +448,7 @@ public class EntryServiceCoreTest {
         }
 
         // Create permanent entry
-        Entry permanentEntry = entryFactory.create(banType.getIdentifier(), target, executor, "Permanent ban", null);
+        EntryWrapper permanentEntry = (EntryWrapper) entryFactory.create(banType.getIdentifier(), target, executor, "Permanent ban", null);
         entryService.execute(permanentEntry);
 
         // Query latest active - should return permanent entry

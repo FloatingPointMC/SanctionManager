@@ -36,7 +36,7 @@ public class EntryFactoryCore implements EntryFactory {
      * @throws IllegalStateException if the Core has never been initialized
      */
     @Override
-    public @NotNull Entry create(
+    public @NotNull EntryWrapper create(
             @NotNull String type,
             @NotNull UUID target,
             @NotNull UUID executor,

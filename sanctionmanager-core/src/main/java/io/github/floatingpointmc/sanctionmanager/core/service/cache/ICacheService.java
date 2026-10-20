@@ -52,6 +52,32 @@ public interface ICacheService {
     @NotNull Optional<List<EntryPersisted>> getQueryResult(@NotNull QueryKey key);
 
     /**
+     * Returns the current query result cache generation.
+     * <p>
+     * The generation is incremented each time {@link #invalidateAllQueryResults()} is called.
+     * Callers should capture the generation before querying storage and pass it to
+     * {@link #putQueryResultIfGenerationMatches} to prevent caching stale data after
+     * concurrent invalidation.
+     * </p>
+     *
+     * @return the current generation counter
+     */
+    long getQueryGeneration();
+
+    /**
+     * Stores a query result in the cache only if the generation hasn't changed.
+     * <p>
+     * This prevents stale data from being cached after a concurrent invalidation.
+     * If the current generation doesn't match expectedGeneration, the put is silently skipped.
+     * </p>
+     *
+     * @param key                the query key
+     * @param entries            the query result entries
+     * @param expectedGeneration the generation that was current when the query started
+     */
+    void putQueryResultIfGenerationMatches(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries, long expectedGeneration);
+
+    /**
      * Stores an entry in the cache.
      * <p>
      * The entry is indexed by both ID and (type, relId) for dual-key lookup.

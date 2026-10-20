@@ -34,8 +34,6 @@ import java.util.stream.Collectors;
  * </p>
  */
 public class MemoryCacheService implements ICacheService {
-    private final int entryCapacity;
-    private final int queryCapacity;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     // Entry cache: LRU map indexed by ID
@@ -44,8 +42,11 @@ public class MemoryCacheService implements ICacheService {
     // Secondary index: type+relId -> ID mapping
     private final Map<String, Long> typeRelIdToId = new HashMap<>();
 
-    // Query result cache: LRU map storing lists of entry IDs
-    private final LinkedHashMap<QueryKey, List<Long>> queryResults;
+    // Query result cache: LRU map storing lists of entry IDs with generation
+    private final LinkedHashMap<QueryKey, QueryResultEntry> queryResults;
+
+    // Query cache generation counter - incremented on invalidateAllQueryResults to invalidate all cached results
+    private long queryGeneration = 0;
 
     /**
      * Creates a bounded LRU memory cache with the capacities from the given configuration.
@@ -63,9 +64,6 @@ public class MemoryCacheService implements ICacheService {
         if (queryCapacity <= 0) {
             throw new IllegalArgumentException("queryCapacity must be positive, got: " + queryCapacity);
         }
-
-        this.entryCapacity = entryCapacity;
-        this.queryCapacity = queryCapacity;
 
         // Create LRU cache for entries with automatic eviction
         this.entryById = new LinkedHashMap<Long, EntryPersisted>(entryCapacity, 0.75f, true) {
@@ -86,9 +84,9 @@ public class MemoryCacheService implements ICacheService {
         };
 
         // Create LRU cache for query results
-        this.queryResults = new LinkedHashMap<QueryKey, List<Long>>(queryCapacity, 0.75f, true) {
+        this.queryResults = new LinkedHashMap<QueryKey, QueryResultEntry>(queryCapacity, 0.75f, true) {
             @Override
-            protected boolean removeEldestEntry(Map.Entry<QueryKey, List<Long>> eldest) {
+            protected boolean removeEldestEntry(Map.Entry<QueryKey, QueryResultEntry> eldest) {
                 return size() > queryCapacity;
             }
         };
@@ -123,20 +121,32 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns the cached query result along with the generation it was stored with.
+     * If the generation doesn't match the current generation, treats it as a cache miss.
+     * </p>
+     */
     @Override
     public @NotNull Optional<List<EntryPersisted>> getQueryResult(@NotNull QueryKey key) {
         // Use writeLock because entryById uses access-order and we call get() on it
         lock.writeLock().lock();
         try {
-            List<Long> ids = queryResults.get(key);
-            if (ids == null) {
+            QueryResultEntry resultEntry = queryResults.get(key);
+            if (resultEntry == null) {
+                return Optional.empty();
+            }
+
+            // Check generation - if stale, treat as cache miss
+            if (resultEntry.generation != queryGeneration) {
+                queryResults.remove(key); // Clean up stale entry
                 return Optional.empty();
             }
 
             // Resolve all entry IDs from the entry cache
-            List<EntryPersisted> result = new ArrayList<>(ids.size());
-            for (Long id : ids) {
+            List<EntryPersisted> result = new ArrayList<>(resultEntry.entryIds.size());
+            for (Long id : resultEntry.entryIds) {
                 EntryPersisted entry = entryById.get(id);
                 if (entry == null) {
                     // Entry was evicted, query result is invalid
@@ -146,6 +156,37 @@ public class MemoryCacheService implements ICacheService {
             }
 
             return Optional.of(result);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getQueryGeneration() {
+        lock.readLock().lock();
+        try {
+            return queryGeneration;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void putQueryResultIfGenerationMatches(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries, long expectedGeneration) {
+        lock.writeLock().lock();
+        try {
+            // Only cache if generation hasn't changed (no invalidation occurred during query)
+            if (queryGeneration != expectedGeneration) {
+                return;
+            }
+
+            // Store only entry IDs with current generation
+            List<Long> ids = entries.stream()
+                    .map(EntryPersisted::getId)
+                    .collect(Collectors.toList());
+            queryResults.put(key, new QueryResultEntry(ids, queryGeneration));
         } finally {
             lock.writeLock().unlock();
         }
@@ -181,11 +222,19 @@ public class MemoryCacheService implements ICacheService {
     public void putQueryResult(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries) {
         lock.writeLock().lock();
         try {
-            // Store only entry IDs, not full objects
+            // Don't overwrite if key already exists with current generation
+            // This prevents stale data from being cached after concurrent invalidation
+            QueryResultEntry existing = queryResults.get(key);
+            if (existing != null && existing.generation == queryGeneration) {
+                // Already cached with current generation, don't overwrite
+                return;
+            }
+
+            // Store only entry IDs with current generation
             List<Long> ids = entries.stream()
                     .map(EntryPersisted::getId)
                     .collect(Collectors.toList());
-            queryResults.put(key, ids);
+            queryResults.put(key, new QueryResultEntry(ids, queryGeneration));
         } finally {
             lock.writeLock().unlock();
         }
@@ -243,7 +292,8 @@ public class MemoryCacheService implements ICacheService {
         try {
             entryById.clear();
             typeRelIdToId.clear();
-            queryResults.clear();
+            // Increment generation instead of clearing - more efficient
+            queryGeneration++;
         } finally {
             lock.writeLock().unlock();
         }
@@ -254,7 +304,10 @@ public class MemoryCacheService implements ICacheService {
     public void invalidateAllQueryResults() {
         lock.writeLock().lock();
         try {
-            queryResults.clear();
+            // Increment generation to invalidate all cached query results
+            // This is more efficient than clearing the map, as stale entries will be
+            // lazily removed on next access
+            queryGeneration++;
         } finally {
             lock.writeLock().unlock();
         }
@@ -262,5 +315,19 @@ public class MemoryCacheService implements ICacheService {
 
     private String makeTypeRelIdKey(String typeId, long relId) {
         return typeId + ":" + relId;
+    }
+
+    /**
+     * Wrapper for cached query results that includes generation tracking.
+     * Results are only valid if their generation matches the current generation.
+     */
+    private static class QueryResultEntry {
+        final List<Long> entryIds;
+        final long generation;
+
+        QueryResultEntry(List<Long> entryIds, long generation) {
+            this.entryIds = entryIds;
+            this.generation = generation;
+        }
     }
 }

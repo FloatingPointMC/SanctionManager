@@ -48,7 +48,7 @@ public interface EntryFactory {
      *                                  match the type's extended data support, or if duration is negative
      * @throws IllegalStateException if the Core has never been initialized
      */
-    @NotNull Entry create(
+    @NotNull EntryWrapper create(
             @NotNull String type,
             @NotNull UUID target,
             @NotNull UUID executor,
@@ -77,7 +77,7 @@ public interface EntryFactory {
      *                                  or if duration is negative
      * @throws IllegalStateException if the Core has never been initialized
      */
-    default @NotNull Entry create(
+    default @NotNull EntryWrapper create(
             @NotNull String type,
             @NotNull UUID target,
             @NotNull UUID executor,
