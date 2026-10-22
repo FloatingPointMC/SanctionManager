@@ -3,7 +3,6 @@ package io.github.floatingpointmc.sanctionmanager.core.service;
 import com.google.gson.JsonObject;
 import io.github.floatingpointmc.sanctionmanager.api.exceptions.persistence.EntryNotFoundException;
 import io.github.floatingpointmc.sanctionmanager.api.model.Entry;
-import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
 import io.github.floatingpointmc.sanctionmanager.api.model.QueryOptions;
 import io.github.floatingpointmc.sanctionmanager.api.service.EntryService;
@@ -12,6 +11,7 @@ import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryWrapperImpl;
 import io.github.floatingpointmc.sanctionmanager.core.service.cache.QueryKey;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.Addition;
 import io.github.floatingpointmc.sanctionmanager.core.service.storage.IStorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -428,11 +428,11 @@ public class EntryServiceCore implements EntryService {
         // Store in persistent storage
         try {
             IStorageService storage = core.getStorageService().getStorageService();
-            long assignedId = storage.insertRecord(tempSnapshot, executingTime, expiryTime);
+            Addition addition = storage.insertRecord(tempSnapshot, executingTime, expiryTime);
 
             // Update snapshot with actual ID from storage
             EntryPersisted persisted = new EntryPersisted(
-                    assignedId, relId, type, tempSnapshot.getTarget(), tempSnapshot.getExecutor(),
+                    addition.getId(), addition.getRelId(), tempSnapshot.getType(), tempSnapshot.getTarget(), tempSnapshot.getExecutor(),
                     expiryTime, executingTime, tempSnapshot.getReason(),
                     tempSnapshot.getDataInternal(),
                     null, null, false, null, 0
@@ -447,14 +447,14 @@ public class EntryServiceCore implements EntryService {
                 core.getCacheService().invalidateAllQueryResults();
             } catch (Exception cacheEx) {
                 // Storage commit succeeded; cache update is best-effort
-                log.warn("Cache update failed after successful storage commit (entry ID {})", assignedId, cacheEx);
+                log.warn("Cache update failed after successful storage commit (entry ID {})", persisted.getId(), cacheEx);
             }
 
             // Persist relId counters (best-effort)
             try {
                 persistRelIdCounters();
             } catch (IOException metaEx) {
-                log.warn("Failed to persist relId counters after successful entry creation (entry ID {})", assignedId, metaEx);
+                log.warn("Failed to persist relId counters after successful entry creation (entry ID {})", persisted.getId(), metaEx);
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to store entry", e);

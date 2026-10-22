@@ -3,6 +3,7 @@ package io.github.floatingpointmc.sanctionmanager.core.storage.engine;
 import io.github.floatingpointmc.sanctionmanager.core.management.TypeManager;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.Addition;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -204,29 +205,29 @@ public class StorageEngine {
      * @throws IOException if writing to the file fails
      * @throws StorageException if the encoded record is too large for a page
      */
-    public synchronized long insertRecord(EntrySnapshot entry) throws IOException {
+    public synchronized Addition insertRecord(EntrySnapshot entry, Date executingTime, Date expiryTime) throws IOException {
         // Assign ID
         long id = superblock.nextEntryId++;
-        entry = new EntryPersisted(
-            id, entry.getRelId(), entry.getType(), entry.getTarget(), entry.getExecutor(),
-            entry.getExpiryTime(), entry.getExecutingTime(), entry.getReason(),
+        EntryPersisted persisted = new EntryPersisted(
+            id, id, entry.getType(), entry.getTarget(), entry.getExecutor(),
+            expiryTime, executingTime, entry.getReason(),
             entry.getDataInternal(), entry.getWithdrawnBy(), entry.getWithdrawalReason(),
             entry.isOverridden(), entry.getOverriddenBy(), 0
         );
 
         // Encode record
-        byte[] recordBytes = recordCodec.encode(entry);
+        byte[] recordBytes = recordCodec.encode(persisted);
 
         // Write to data page
         EntryRecordLocation location = dataPageManager.insertRecord(recordBytes);
 
         // Update indexes
-        indexRecord(entry, location);
+        indexRecord(persisted, location);
 
         // Persist superblock
         persistSuperblock();
 
-        return id;
+        return new Addition(id, id);
     }
 
     /**

@@ -6,5 +6,5 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Getter
 public class Addition {
-    private final long id, rel_id;
+    private final long id, relId;
 }

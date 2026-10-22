@@ -7,13 +7,12 @@ import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.storage.engine.StorageEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Storage service implementation using binary file-based backend.
@@ -79,9 +78,9 @@ public class BinaryFileStorageService implements IStorageService {
      * @throws IllegalStateException if this service is not initialized
      */
     @Override
-    public Addition insertRecord(EntrySnapshot entry) throws IOException {
+    public @NotNull Addition insertRecord(@NotNull EntrySnapshot entry, @NotNull Date executingTime, @Nullable Date expiryTime) throws IOException {
         ensureInitialized();
-        return engine.insertRecord(entry);
+        return engine.insertRecord(entry, executingTime, expiryTime);
     }
 
     /**
