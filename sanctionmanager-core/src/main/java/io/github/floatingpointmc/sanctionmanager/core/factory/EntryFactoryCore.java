@@ -8,7 +8,6 @@ import io.github.floatingpointmc.sanctionmanager.api.model.EntryWrapper;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.model.EntryWrapperImpl;
-import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,12 +18,17 @@ import java.util.UUID;
  * Core implementation of EntryFactory.
  * <p>
  * Creates new pending Entry instances wrapped in {@code EntryWrapperImpl} containing {@code EntrySnapshot}.
- * The constructor is Lombok-generated and only stores the Core.
  * </p>
  */
-@RequiredArgsConstructor
 public class EntryFactoryCore implements EntryFactory {
-    private final SanctionManagerCore core;
+    private final @NotNull SanctionManagerCore core;
+
+    public EntryFactoryCore(@NotNull SanctionManagerCore core) {
+        if (core.isInitialized()) {
+            throw new IllegalStateException("SanctionManagerCore is already initialized");
+        }
+        this.core = core;
+    }
 
     /**
      * {@inheritDoc}

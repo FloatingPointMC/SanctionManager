@@ -19,8 +19,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -43,8 +41,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class EntryServiceCore implements EntryService {
     private final SanctionManagerCore core;
-    private final Map<String, AtomicLong> typeRelIdCounters = new ConcurrentHashMap<>();
-    private final AtomicLong idCounter = new AtomicLong(0);
 
     /**
      * Constructs the entry service for the given Core.
@@ -57,36 +53,6 @@ public class EntryServiceCore implements EntryService {
             throw new IllegalStateException("SanctionManagerCore is already initialized");
         }
         this.core = core;
-    }
-
-    /**
-     * Restores the per-type relId counters from persistent storage.
-     * <p>
-     * This must be called after the storage service is initialized to ensure relId uniqueness
-     * across service restarts.
-     * </p>
-     *
-     * @param storage the storage service to restore from
-     */
-    public void restoreRelIdCounters(IStorageService storage) {
-        Map<String, Long> restored = storage.getTypeRelIdCounters();
-        typeRelIdCounters.clear();
-        for (Map.Entry<String, Long> entry : restored.entrySet()) {
-            typeRelIdCounters.put(entry.getKey(), new AtomicLong(entry.getValue()));
-        }
-    }
-
-    /**
-     * Persists the current per-type relId counters to storage.
-     *
-     * @throws IOException if writing the file fails
-     */
-    private void persistRelIdCounters() throws IOException {
-        IStorageService storage = core.getStorageService().getStorageService();
-        for (Map.Entry<String, AtomicLong> entry : typeRelIdCounters.entrySet()) {
-            storage.updateTypeRelIdCounter(entry.getKey(), entry.getValue().get());
-        }
-        storage.persistMetadata();
     }
 
     /** {@inheritDoc} */
@@ -448,13 +414,6 @@ public class EntryServiceCore implements EntryService {
             } catch (Exception cacheEx) {
                 // Storage commit succeeded; cache update is best-effort
                 log.warn("Cache update failed after successful storage commit (entry ID {})", persisted.getId(), cacheEx);
-            }
-
-            // Persist relId counters (best-effort)
-            try {
-                persistRelIdCounters();
-            } catch (IOException metaEx) {
-                log.warn("Failed to persist relId counters after successful entry creation (entry ID {})", persisted.getId(), metaEx);
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to store entry", e);

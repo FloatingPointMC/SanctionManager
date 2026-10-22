@@ -14,10 +14,9 @@ import io.github.floatingpointmc.sanctionmanager.core.service.StorageService;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
 
 /**
  * Core implementation of SanctionManager.
@@ -32,19 +31,14 @@ public class SanctionManagerCore implements SanctionManager {
     private final @NotNull EntryFactoryCore entryFactory;
     private final @NotNull StorageService storageService;
     private final @NotNull CacheService cacheService;
-    private @Nullable TypeManager typeManager;
+    private final @NotNull TypeManager typeManager;
     /**
      * The configuration this Core was created with.
      */
     @Getter
     private final @NotNull CoreConfig config;
-
-    private final ArrayList<EntryType> entryTypes = new ArrayList<>();
-    /**
-     * Whether the Core is currently initialized. Set by {@link #initialize()} and cleared by {@link #shutdown()}.
-     */
     @Getter
-    private boolean initialized = false;
+    private boolean initialized;
 
     /**
      * Creates a new SanctionManagerCore instance and constructs its services.
@@ -52,93 +46,18 @@ public class SanctionManagerCore implements SanctionManager {
      * @param config the Core configuration
      * @throws IllegalArgumentException if the cache configuration is invalid (see {@link CacheService})
      */
-    private SanctionManagerCore(@NotNull CoreConfig config) {
+    SanctionManagerCore(@NotNull CoreConfig config, @NotNull List<EntryType> entryTypes) {
+        initialized = false;
         this.config = config;
         entryService = new EntryServiceCore(this);
         entryFactory = new EntryFactoryCore(this);
         storageService = new StorageService(this);
         cacheService = new CacheService(this);
-    }
 
-    /**
-     * Creates a new SanctionManagerCore instance with the specified configuration.
-     * <p>
-     * After creation, call {@link #types(EntryType...)} or {@link #addTypes(EntryType...)}
-     * to register entry types, then call {@link #initialize()} to activate the Core.
-     * </p>
-     *
-     * @param config the Core configuration. Cannot be null.
-     * @return a new uninitialized Core instance
-     * @throws NullPointerException if {@code config} is null
-     * @throws IllegalArgumentException if the cache configuration is invalid (see {@link CacheService})
-     */
-    public static SanctionManagerCore create(@NotNull CoreConfig config) {
-        Objects.requireNonNull(config, "config cannot be null");
-        return new SanctionManagerCore(config);
-    }
-
-    /**
-     * Replaces the list of entry types to register on {@link #initialize()}.
-     *
-     * @param types the entry types. Cannot be null and must not contain null or duplicate elements.
-     * @return this Core, for chaining
-     * @throws IllegalStateException if the Core is currently initialized
-     * @throws NullPointerException if {@code types} or any element is null
-     * @throws IllegalArgumentException if {@code types} contains duplicates (compared by identifier)
-     */
-    public SanctionManagerCore types(EntryType @NotNull ... types) {
-        validateTypes(types, Collections.emptyList());
-        entryTypes.clear();
-        entryTypes.addAll(Arrays.asList(types));
-        return this;
-    }
-
-    /**
-     * Appends entry types to the list of types to register on {@link #initialize()}.
-     * <p>
-     * Duplicates are only detected within the given array; types added by earlier calls are not
-     * compared. If an identifier ends up registered more than once, the last occurrence is used.
-     * </p>
-     *
-     * @param types the entry types to add. Cannot be null and must not contain null or duplicate elements.
-     * @return this Core, for chaining
-     * @throws IllegalStateException if the Core is currently initialized
-     * @throws NullPointerException if {@code types} or any element is null
-     * @throws IllegalArgumentException if {@code types} itself contains duplicates (compared by identifier)
-     */
-    public SanctionManagerCore addTypes(EntryType @NotNull ... types) {
-        validateTypes(types, Collections.emptyList());
-        entryTypes.addAll(Arrays.asList(types));
-        return this;
-    }
-
-    /**
-     * Initializes the Core and registers it as the active API instance.
-     * <p>
-     * This method must be called before using any services. It builds the {@link TypeManager} from the
-     * registered types, initializes storage, and registers this Core with the global {@code SanctionManagerAPI}.
-     * </p>
-     *
-     * @throws IllegalStateException if the Core has already been initialized
-     * @throws UnsupportedOperationException if database storage is configured (not implemented)
-     * @throws IllegalArgumentException if the binary file configuration is invalid
-     * @throws RuntimeException if storage initialization fails
-     */
-    public void initialize() {
-        synchronized (this) {
-            if (initialized) {
-                throw new IllegalStateException("SanctionManagerCore is already initialized");
-            }
-            // Create typeManager before initializing storage, as storage needs it
-            typeManager = new TypeManager(entryTypes);
-            storageService.initialize();
-
-            // Restore relId counters from persistent storage
-            entryService.restoreRelIdCounters(storageService.getStorageService());
-
-            initialized = true;
-            SanctionManagerAPI.setApi(this);
-        }
+        typeManager = new TypeManager(entryTypes);
+        storageService.initialize();
+        initialized = true;
+        SanctionManagerAPI.setApi(this);
     }
 
     /**
@@ -165,7 +84,6 @@ public class SanctionManagerCore implements SanctionManager {
             }
 
             // Always clear state even if storage fails
-            initialized = false;
             SanctionManagerAPI.clearApi();
 
             try {
@@ -188,27 +106,17 @@ public class SanctionManagerCore implements SanctionManager {
 
     /**
      * {@inheritDoc}
-     *
-     * @throws IllegalStateException if the Core is not initialized
      */
     @Override
     public @NotNull EntryService getEntryService() {
-        if (!initialized) {
-            throw new IllegalStateException("SanctionManagerCore is not initialized");
-        }
         return entryService;
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @throws IllegalStateException if the Core is not initialized
      */
     @Override
     public @NotNull EntryFactory getEntryFactory() {
-        if (!initialized) {
-            throw new IllegalStateException("SanctionManagerCore is not initialized");
-        }
         return entryFactory;
     }
 
@@ -216,12 +124,8 @@ public class SanctionManagerCore implements SanctionManager {
      * Gets the storage service facade.
      *
      * @return the storage service
-     * @throws IllegalStateException if the Core is not initialized
      */
     public @NotNull StorageService getStorageService() {
-        if (!initialized) {
-            throw new IllegalStateException("SanctionManagerCore is not initialized");
-        }
         return storageService;
     }
 
@@ -235,38 +139,14 @@ public class SanctionManagerCore implements SanctionManager {
     }
 
     /**
-     * Gets the type manager built by the most recent call to {@link #initialize()}.
+     * Gets the type manager.
      * <p>
      * The type manager remains available after {@link #shutdown()}.
      * </p>
      *
      * @return the type manager
-     * @throws IllegalStateException if {@link #initialize()} has never been called
      */
     public @NotNull TypeManager getTypeManager() {
-        if (typeManager == null) {
-            throw new IllegalStateException("SanctionManagerCore is not initialized");
-        }
         return typeManager;
-    }
-
-    private void validateTypes(
-            final EntryType @NotNull [] types,
-            final Collection<EntryType> existing
-    ) {
-        if (initialized) {
-            throw new IllegalStateException("SanctionManagerCore is already initialized");
-        }
-        final HashSet<EntryType> seen = new HashSet<>(existing);
-
-        for (final EntryType type : types) {
-            Objects.requireNonNull(type, "Entry type cannot be null");
-
-            if (!seen.add(type)) {
-                throw new IllegalArgumentException(
-                        "Duplicate entry type: " + type.getIdentifier()
-                );
-            }
-        }
     }
 }
