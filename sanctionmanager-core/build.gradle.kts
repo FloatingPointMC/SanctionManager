@@ -25,11 +25,11 @@ dependencies {
     runtimeOnly("com.mysql:mysql-connector-j:26.7.0")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client:3.5.10")
     runtimeOnly("org.postgresql:postgresql:42.7.14")
+    runtimeOnly("org.xerial:sqlite-jdbc:3.46.1.0")
     implementation("org.slf4j:slf4j-api:2.0.20")
     implementation("io.lettuce:lettuce-core:7.9.0.RELEASE")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

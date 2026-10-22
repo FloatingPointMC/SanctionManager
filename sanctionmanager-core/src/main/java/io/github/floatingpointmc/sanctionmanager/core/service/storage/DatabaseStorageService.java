@@ -80,95 +80,159 @@ public class DatabaseStorageService implements IStorageService {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Not implemented.
-     * </p>
-     *
-     * @throws UnsupportedOperationException always
      */
     @Override
     public @NotNull Addition insertRecord(@NotNull EntrySnapshot entry, @NotNull Date executingTime, @Nullable Date expiryTime) throws IOException {
-        String tableName = "sm_data_" + entry.getType().getIdentifier();
-        database.insert(tableName, entry.getTarget(), entry.getReason(), executingTime, expiryTime, entry.getDataInternal());
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).insertEntry(
+                        entry.getType().getIdentifier(), entry.getTarget(),
+                        entry.getExecutor(), entry.getReason(), executingTime, expiryTime, entry.getDataInternal());
+            } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).insertEntry(
+                        entry.getType().getIdentifier(), entry.getTarget(),
+                        entry.getExecutor(), entry.getReason(), executingTime, expiryTime, entry.getDataInternal());
+            } else {
+                throw new IOException("Unsupported database implementation: " + database.getClass().getName());
+            }
+        } catch (SQLException e) {
+            throw new IOException("Failed to insert record", e);
+        }
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Not implemented.
-     * </p>
-     *
-     * @throws UnsupportedOperationException always
      */
     @Override
     public Optional<EntryPersisted> getRecord(long id) throws IOException {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).getEntryById(id);
+            } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).getEntryById(id);
+            } else {
+                throw new IOException("Unsupported database implementation");
+            }
+        } catch (SQLException e) {
+            throw new IOException("Failed to retrieve record", e);
+        }
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Not implemented.
-     * </p>
-     *
-     * @throws UnsupportedOperationException always
      */
     @Override
     public List<EntryPersisted> queryByTarget(UUID target) throws IOException {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).queryByTarget(target);
+            } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).queryByTarget(target);
+            } else {
+                throw new IOException("Unsupported database implementation");
+            }
+        } catch (SQLException e) {
+            throw new IOException("Failed to query by target", e);
+        }
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Not implemented.
-     * </p>
-     *
-     * @throws UnsupportedOperationException always
      */
     @Override
     public List<EntryPersisted> queryByTypeAndRelId(String typeId, long relId) throws IOException {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).queryByTypeAndRelId(typeId, relId);
+            } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).queryByTypeAndRelId(typeId, relId);
+            } else {
+                throw new IOException("Unsupported database implementation");
+            }
+        } catch (SQLException e) {
+            throw new IOException("Failed to query by type and relId", e);
+        }
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Not implemented.
-     * </p>
-     *
-     * @throws UnsupportedOperationException always
      */
     @Override
     public List<EntryPersisted> queryAll() throws IOException {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).queryAll();
+            } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).queryAll();
+            } else {
+                throw new IOException("Unsupported database implementation");
+            }
+        } catch (SQLException e) {
+            throw new IOException("Failed to query all records", e);
+        }
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Not implemented.
-     * </p>
-     *
-     * @throws UnsupportedOperationException always
      */
     @Override
     public void updateRecord(EntryPersisted entry) throws IOException {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
+                ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).updateEntry(
+                        entry.getType().getIdentifier(), entry.getId(),
+                        entry.getWithdrawnBy(), entry.getWithdrawalReason(),
+                        entry.isOverridden(), entry.getOverriddenBy());
+            } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
+                ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).updateEntry(
+                        entry.getType().getIdentifier(), entry.getId(),
+                        entry.getWithdrawnBy(), entry.getWithdrawalReason(),
+                        entry.isOverridden(), entry.getOverriddenBy());
+            } else {
+                throw new IOException("Unsupported database implementation");
+            }
+        } catch (SQLException e) {
+            throw new IOException("Failed to update record", e);
+        }
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Not implemented.
-     * </p>
-     *
-     * @throws UnsupportedOperationException always
      */
     @Override
     public void deleteRecord(long id) throws IOException {
-        throw new UnsupportedOperationException("Database storage is not yet implemented");
+        if (database == null) {
+            throw new IllegalStateException("Database not initialized");
+        }
+        try {
+            if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
+                ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).deleteEntry(id);
+            } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
+                ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).deleteEntry(id);
+            } else {
+                throw new IOException("Unsupported database implementation");
+            }
+        } catch (SQLException e) {
+            throw new IOException("Failed to delete record", e);
+        }
     }
 
     /**

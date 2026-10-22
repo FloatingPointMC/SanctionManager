@@ -3,6 +3,7 @@ package io.github.floatingpointmc.sanctionmanager.core.storage.sql;
 import io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.IDatabase;
 import io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL;
 import io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.PostgreSQL;
+import io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +13,8 @@ import org.jetbrains.annotations.NotNull;
 public enum DatabaseType {
     MYSQL("MySQL", MySQL.class),
     MARIADB("MariaDB", MySQL.class),
-    POSTGRESQL("PostgreSQL", PostgreSQL.class);
+    POSTGRESQL("PostgreSQL", PostgreSQL.class),
+    SQLITE("SQLite", SQLite.class);
 
     private final @NotNull String name;
     @Getter
@@ -30,6 +32,8 @@ public enum DatabaseType {
                 return MARIADB;
             case "postgresql":
                 return POSTGRESQL;
+            case "sqlite":
+                return SQLITE;
             default:
                 throw new IllegalArgumentException("Unknown database type: " + jdbcUrl);
         }

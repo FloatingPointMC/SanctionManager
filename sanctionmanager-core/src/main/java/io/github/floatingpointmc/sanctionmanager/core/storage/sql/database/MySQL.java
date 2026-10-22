@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.zaxxer.hikari.HikariDataSource;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.Addition;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -624,6 +625,238 @@ public class MySQL implements IDatabase {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Inserts a new entry and returns global and type-relative IDs.
+     */
+    public Addition insertEntry(@NotNull String typeId, @NotNull UUID target, @NotNull UUID executor,
+                                @Nullable String reason, @NotNull Date executingTime,
+                                @Nullable Date expiryTime, @Nullable JsonObject data) throws SQLException {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                String insertParent = "INSERT INTO sm_parent (target, type) VALUES (?, ?)";
+                long parentId;
+                try (PreparedStatement pstmt = connection.prepareStatement(insertParent, Statement.RETURN_GENERATED_KEYS)) {
+                    pstmt.setBytes(1, uuidToBytes(target));
+                    pstmt.setString(2, typeId);
+                    pstmt.executeUpdate();
+                    try (ResultSet keys = pstmt.getGeneratedKeys()) {
+                        if (keys.next()) {
+                            parentId = keys.getLong(1);
+                        } else {
+                            throw new SQLException("Failed to retrieve generated parent ID");
+                        }
+                    }
+                }
+
+                String dataTableName = "sm_data_" + typeId;
+                String insertData = data == null
+                        ? "INSERT INTO " + dataTableName + " (parent_id, executor, expiry_time, execution_time, status, reason) VALUES (?, ?, ?, ?, ?, ?)"
+                        : "INSERT INTO " + dataTableName + " (parent_id, executor, expiry_time, execution_time, status, reason, extra_data) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+                long relId;
+                try (PreparedStatement pstmt = connection.prepareStatement(insertData, Statement.RETURN_GENERATED_KEYS)) {
+                    pstmt.setLong(1, parentId);
+                    pstmt.setBytes(2, uuidToBytes(executor));
+                    pstmt.setTimestamp(3, expiryTime != null ? new java.sql.Timestamp(expiryTime.getTime()) : null);
+                    pstmt.setTimestamp(4, new java.sql.Timestamp(executingTime.getTime()));
+                    pstmt.setInt(5, 0);
+                    pstmt.setString(6, reason);
+                    if (data != null) {
+                        pstmt.setString(7, data.toString());
+                    }
+                    pstmt.executeUpdate();
+                    try (ResultSet keys = pstmt.getGeneratedKeys()) {
+                        if (keys.next()) {
+                            relId = keys.getLong(1);
+                        } else {
+                            throw new SQLException("Failed to retrieve generated relId");
+                        }
+                    }
+                }
+
+                connection.commit();
+                return new Addition(parentId, relId);
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    /**
+     * Retrieves entry by global ID.
+     */
+    public Optional<io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted> getEntryById(long id) throws SQLException {
+        String query = "SELECT sp.id, sp.target, sp.type FROM sm_parent sp WHERE sp.id = ?";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setLong(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(buildEntry(rs, connection));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Queries entries by target UUID.
+     */
+    public List<io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted> queryByTarget(@NotNull UUID target) throws SQLException {
+        List<io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted> results = new ArrayList<>();
+        String query = "SELECT sp.id, sp.target, sp.type FROM sm_parent sp WHERE sp.target = ? ORDER BY sp.id ASC";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setBytes(1, uuidToBytes(target));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(buildEntry(rs, connection));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Queries entries by type and type-relative ID.
+     */
+    public List<io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted> queryByTypeAndRelId(@NotNull String typeId, long relId) throws SQLException {
+        List<io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted> results = new ArrayList<>();
+        String dataTableName = "sm_data_" + typeId;
+        String query = "SELECT sp.id, sp.target, sp.type FROM sm_parent sp " +
+                "INNER JOIN " + dataTableName + " sd ON sp.id = sd.parent_id " +
+                "WHERE sd.rel_id = ? ORDER BY sp.id ASC";
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setLong(1, relId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(buildEntry(rs, connection));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Queries all entries.
+     */
+    public List<io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted> queryAll() throws SQLException {
+        List<io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted> results = new ArrayList<>();
+        String query = "SELECT sp.id, sp.target, sp.type FROM sm_parent sp ORDER BY sp.id ASC";
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                results.add(buildEntry(rs, connection));
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Updates entry record.
+     */
+    public void updateEntry(@NotNull String typeId, long parentId, @Nullable UUID withdrawnBy,
+                           @Nullable String withdrawalReason, boolean overridden,
+                           @Nullable Long overriddenBy) throws SQLException {
+        String dataTableName = "sm_data_" + typeId;
+        String query = "UPDATE " + dataTableName + " SET status = ? WHERE parent_id = ?";
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+            int status = 0;
+            if (withdrawnBy != null) status |= 1;
+            if (overridden) status |= 2;
+
+            pstmt.setInt(1, status);
+            pstmt.setLong(2, parentId);
+            pstmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Deletes entry by global ID.
+     */
+    public void deleteEntry(long id) throws SQLException {
+        String query = "DELETE FROM sm_parent WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setLong(1, id);
+            pstmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Builds EntryPersisted from parent table result set.
+     */
+    private io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted buildEntry(@NotNull ResultSet parentRs, @NotNull Connection connection) throws SQLException {
+        long id = parentRs.getLong("id");
+        UUID target = bytesToUuid(parentRs.getBytes("target"));
+        String typeId = parentRs.getString("type");
+
+        String dataTableName = "sm_data_" + typeId;
+        String dataQuery = "SELECT rel_id, executor, expiry_time, execution_time, status, reason" +
+                (core.getTypeManager().getType(typeId).hasExtraData() ? ", extra_data" : "") +
+                " FROM " + dataTableName + " WHERE parent_id = ? LIMIT 1";
+
+        try (PreparedStatement pstmt = connection.prepareStatement(dataQuery)) {
+            pstmt.setLong(1, id);
+            try (ResultSet dataRs = pstmt.executeQuery()) {
+                if (dataRs.next()) {
+                    return resultSetToEntry(id, target, typeId, dataRs);
+                }
+            }
+        }
+
+        throw new SQLException("Entry " + id + " has no data in type table " + dataTableName);
+    }
+
+    /**
+     * Converts result set row to EntryPersisted.
+     */
+    private io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted resultSetToEntry(long id, @NotNull UUID target, @NotNull String typeId,
+                                           @NotNull ResultSet rs) throws SQLException {
+        long relId = rs.getLong("rel_id");
+        UUID executor = bytesToUuid(rs.getBytes("executor"));
+        java.sql.Timestamp expiryTs = rs.getTimestamp("expiry_time");
+        java.sql.Timestamp executionTs = rs.getTimestamp("execution_time");
+        int status = rs.getInt("status");
+        String reason = rs.getString("reason");
+
+        Date expiryTime = expiryTs != null ? new Date(expiryTs.getTime()) : null;
+        Date executionTime = new Date(executionTs.getTime());
+
+        JsonObject data = null;
+        if (core.getTypeManager().getType(typeId).hasExtraData()) {
+            String dataStr = rs.getString("extra_data");
+            if (dataStr != null) {
+                data = com.google.gson.JsonParser.parseString(dataStr).getAsJsonObject();
+            }
+        }
+
+        boolean isWithdrawn = (status & 1) != 0;
+        boolean isOverridden = (status & 2) != 0;
+
+        return new io.github.floatingpointmc.sanctionmanager.core.model.EntryPersisted(
+                id, relId,
+                core.getTypeManager().getType(typeId),
+                target, executor,
+                expiryTime, executionTime,
+                reason, data,
+                isWithdrawn ? executor : null,
+                null,
+                isOverridden,
+                null,
+                0
+        );
     }
 
     @RequiredArgsConstructor

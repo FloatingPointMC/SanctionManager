@@ -43,6 +43,7 @@ Minecraft commands and platform listeners use EntryService directly. Message for
 
 - [Entry cleanup report](ENTRY_CLEANUP_REPORT.md): removed architecture, current API/database structure and validation.
 - [Core implementation report](CORE_IMPLEMENTATION_REPORT.md): lifecycle, credentials, migration and transaction details, followed by the cleanup revision.
+- [Storage Backends](docs/STORAGE_BACKENDS.md): SQLite, MySQL, and other backend configuration and usage.
 
 Build with a supported Gradle JVM and the project's Java toolchains:
 
