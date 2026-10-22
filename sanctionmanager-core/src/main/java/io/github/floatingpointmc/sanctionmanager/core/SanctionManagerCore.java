@@ -109,6 +109,9 @@ public class SanctionManagerCore implements SanctionManager {
      */
     @Override
     public @NotNull EntryService getEntryService() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
+        }
         return entryService;
     }
 
@@ -117,6 +120,9 @@ public class SanctionManagerCore implements SanctionManager {
      */
     @Override
     public @NotNull EntryFactory getEntryFactory() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
+        }
         return entryFactory;
     }
 
@@ -126,6 +132,9 @@ public class SanctionManagerCore implements SanctionManager {
      * @return the storage service
      */
     public @NotNull StorageService getStorageService() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
+        }
         return storageService;
     }
 
@@ -135,6 +144,9 @@ public class SanctionManagerCore implements SanctionManager {
      * @return the cache service
      */
     public @NotNull CacheService getCacheService() {
+        if (!initialized) {
+            throw new IllegalStateException("SanctionManagerCore is not initialized");
+        }
         return cacheService;
     }
 
