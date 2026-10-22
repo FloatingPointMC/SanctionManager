@@ -39,8 +39,8 @@ public class BinaryFileStorageService implements IStorageService {
      * </p>
      *
      * @throws IllegalArgumentException if the page size is less than 512 bytes
-     * @throws IllegalStateException if the Core's type manager is not yet available
-     * @throws RuntimeException if opening or creating the storage file fails
+     * @throws IllegalStateException    if the Core's type manager is not yet available
+     * @throws RuntimeException         if opening or creating the storage file fails
      */
     @Override
     public void initialize() {
@@ -71,7 +71,7 @@ public class BinaryFileStorageService implements IStorageService {
     /**
      * {@inheritDoc}
      * <p>
-     * Delegates to {@link StorageEngine#insertRecord(EntrySnapshot)}, which assigns a new ID; the ID of
+     * Delegates to {@link StorageEngine#insertRecord(EntrySnapshot, Date, Date)} (EntrySnapshot)}, which assigns a new ID; the ID of
      * the given entry is ignored.
      * </p>
      *
@@ -144,9 +144,9 @@ public class BinaryFileStorageService implements IStorageService {
     /**
      * {@inheritDoc}
      *
-     * @throws IllegalStateException if this service is not initialized
+     * @throws IllegalStateException                                                          if this service is not initialized
      * @throws io.github.floatingpointmc.sanctionmanager.core.storage.engine.StorageException if no record
-     *         with the entry's ID exists
+     *                                                                                        with the entry's ID exists
      */
     @Override
     public void updateRecord(EntryPersisted entry) throws IOException {
@@ -181,21 +181,27 @@ public class BinaryFileStorageService implements IStorageService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public java.util.Map<String, Long> getTypeRelIdCounters() {
         ensureInitialized();
         return engine.getTypeRelIdCounters();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateTypeRelIdCounter(String typeIdentifier, long nextRelId) {
         ensureInitialized();
         engine.updateTypeRelIdCounter(typeIdentifier, nextRelId);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void persistMetadata() throws IOException {
         ensureInitialized();

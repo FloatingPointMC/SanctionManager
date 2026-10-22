@@ -139,6 +139,7 @@ public class EntryPersisted implements Entry {
     }
 
     // Getter for internal usage
+
     /**
      * Gets the stored extra data without copying.
      *
@@ -159,20 +160,20 @@ public class EntryPersisted implements Entry {
      */
     public EntryPersisted defensiveCopy() {
         return new EntryPersisted(
-            id,
-            relId,
-            type,
-            target,
-            executor,
-            expiryTime != null ? new Date(expiryTime.getTime()) : null,
-            new Date(executingTime.getTime()),
-            reason,
-            data != null ? data.deepCopy() : null,
-            withdrawnBy,
-            withdrawalReason,
-            overridden,
-            overriddenBy,
-            version
+                id,
+                relId,
+                type,
+                target,
+                executor,
+                expiryTime != null ? new Date(expiryTime.getTime()) : null,
+                new Date(executingTime.getTime()),
+                reason,
+                data != null ? data.deepCopy() : null,
+                withdrawnBy,
+                withdrawalReason,
+                overridden,
+                overriddenBy,
+                version
         );
     }
 }

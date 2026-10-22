@@ -22,13 +22,21 @@ import org.jetbrains.annotations.Nullable;
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 @Getter
 public final class CacheConfig {
-    /** Whether caching is enabled. */
+    /**
+     * Whether caching is enabled.
+     */
     private final boolean enabled;
-    /** Whether to use Redis for caching (only meaningful if enabled is true). */
+    /**
+     * Whether to use Redis for caching (only meaningful if enabled is true).
+     */
     private final boolean usingRedis;
-    /** Redis configuration, non-null if this configuration was created by {@link #redis(RedisConfig)}. */
+    /**
+     * Redis configuration, non-null if this configuration was created by {@link #redis(RedisConfig)}.
+     */
     private final @Nullable RedisConfig redisConfig;
-    /** In-memory cache configuration, non-null if this configuration was created by {@link #memory(MemoryCacheConfig)}. */
+    /**
+     * In-memory cache configuration, non-null if this configuration was created by {@link #memory(MemoryCacheConfig)}.
+     */
     private final @Nullable MemoryCacheConfig memoryCacheConfig;
 
     /**

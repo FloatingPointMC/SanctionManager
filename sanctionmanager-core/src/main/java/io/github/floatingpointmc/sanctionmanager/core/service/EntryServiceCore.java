@@ -55,7 +55,9 @@ public class EntryServiceCore implements EntryService {
         this.core = core;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull List<Entry> query(@NotNull UUID target, @NotNull QueryOptions options) {
         if (!core.isInitialized()) {
@@ -119,7 +121,9 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull List<Entry> queryAll(@NotNull QueryOptions options, String @NotNull ... types) {
         if (!core.isInitialized()) {
@@ -453,20 +457,20 @@ public class EntryServiceCore implements EntryService {
 
         // Create updated copy without mutating the original
         EntryPersisted updated = new EntryPersisted(
-            current.getId(),
-            current.getRelId(),
-            current.getType(),
-            current.getTarget(),
-            current.getExecutor(),
-            current.getExpiryTime(),
-            current.getExecutingTime(),
-            current.getReason(),
-            newData, // Updated data
-            current.getWithdrawnBy(),
-            current.getWithdrawalReason(),
-            current.isOverridden(),
-            current.getOverriddenBy(),
-            current.getVersion()
+                current.getId(),
+                current.getRelId(),
+                current.getType(),
+                current.getTarget(),
+                current.getExecutor(),
+                current.getExpiryTime(),
+                current.getExecutingTime(),
+                current.getReason(),
+                newData, // Updated data
+                current.getWithdrawnBy(),
+                current.getWithdrawalReason(),
+                current.isOverridden(),
+                current.getOverriddenBy(),
+                current.getVersion()
         );
 
         // Update persistent storage first
@@ -490,7 +494,9 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void withdraw(@NotNull EntryWrapper entry, @NotNull UUID withdrawnBy, @Nullable String withdrawReason) {
         if (!core.isInitialized()) {
@@ -517,20 +523,20 @@ public class EntryServiceCore implements EntryService {
 
         // Create updated copy without mutating the original
         EntryPersisted updated = new EntryPersisted(
-            current.getId(),
-            current.getRelId(),
-            current.getType(),
-            current.getTarget(),
-            current.getExecutor(),
-            current.getExpiryTime(),
-            current.getExecutingTime(),
-            current.getReason(),
-            current.getDataInternal(),
-            withdrawnBy, // Updated withdrawnBy
-            withdrawReason, // Updated withdrawReason
-            current.isOverridden(),
-            current.getOverriddenBy(),
-            current.getVersion()
+                current.getId(),
+                current.getRelId(),
+                current.getType(),
+                current.getTarget(),
+                current.getExecutor(),
+                current.getExpiryTime(),
+                current.getExecutingTime(),
+                current.getReason(),
+                current.getDataInternal(),
+                withdrawnBy, // Updated withdrawnBy
+                withdrawReason, // Updated withdrawReason
+                current.isOverridden(),
+                current.getOverriddenBy(),
+                current.getVersion()
         );
 
         // Update persistent storage first
@@ -552,7 +558,9 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateWithdrawReason(@NotNull EntryWrapper entry, @Nullable String withdrawReason) {
         if (!core.isInitialized()) {
@@ -578,20 +586,20 @@ public class EntryServiceCore implements EntryService {
 
         // Create updated copy without mutating the original
         EntryPersisted updated = new EntryPersisted(
-            current.getId(),
-            current.getRelId(),
-            current.getType(),
-            current.getTarget(),
-            current.getExecutor(),
-            current.getExpiryTime(),
-            current.getExecutingTime(),
-            current.getReason(),
-            current.getDataInternal(),
-            current.getWithdrawnBy(),
-            withdrawReason, // Updated withdrawReason
-            current.isOverridden(),
-            current.getOverriddenBy(),
-            current.getVersion()
+                current.getId(),
+                current.getRelId(),
+                current.getType(),
+                current.getTarget(),
+                current.getExecutor(),
+                current.getExpiryTime(),
+                current.getExecutingTime(),
+                current.getReason(),
+                current.getDataInternal(),
+                current.getWithdrawnBy(),
+                withdrawReason, // Updated withdrawReason
+                current.isOverridden(),
+                current.getOverriddenBy(),
+                current.getVersion()
         );
 
         // Update persistent storage first
@@ -662,7 +670,9 @@ public class EntryServiceCore implements EntryService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void delete(long id) {
         if (!core.isInitialized()) {

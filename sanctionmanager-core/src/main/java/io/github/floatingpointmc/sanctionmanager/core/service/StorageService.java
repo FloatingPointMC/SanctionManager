@@ -50,8 +50,8 @@ public class StorageService {
      * </p>
      *
      * @throws UnsupportedOperationException if the database backend is selected (not implemented)
-     * @throws IllegalArgumentException if the binary file configuration is invalid
-     * @throws RuntimeException if the storage backend fails to open
+     * @throws IllegalArgumentException      if the binary file configuration is invalid
+     * @throws RuntimeException              if the storage backend fails to open
      */
     public void initialize() {
         log.info("Initializing storage({})", storageService);

@@ -1,6 +1,9 @@
 package io.github.floatingpointmc.sanctionmanager.core.config.storage;
 
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -11,37 +14,27 @@ import org.jetbrains.annotations.Nullable;
  * set, in which case it is ignored.
  * </p>
  */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 @Getter
 public final class StorageConfig {
-    /** Whether database storage is enabled. Database storage is not implemented. */
+    /**
+     * Whether database storage is enabled. Database storage is not implemented.
+     */
     private final boolean usingDatabase;
-    /** Binary file configuration, non-null if {@code usingDatabase} is {@code false}. */
+    /**
+     * Binary file configuration, non-null if {@code usingDatabase} is {@code false}.
+     */
     private final @Nullable BinaryFileConfig binaryFileConfig;
-    /** Database configuration, non-null if {@code usingDatabase} is {@code true}. */
+    /**
+     * Database configuration, non-null if {@code usingDatabase} is {@code true}.
+     */
     private final @Nullable DatabaseConfig databaseConfig;
 
-    /**
-     * Constructs a StorageConfig with validation.
-     * <p>
-     * If {@code usingDatabase} is {@code true}, {@code databaseConfig} must be non-null.
-     * If {@code usingDatabase} is {@code false}, {@code binaryFileConfig} must be non-null.
-     * </p>
-     *
-     * @param usingDatabase    whether to use database storage
-     * @param binaryFileConfig binary file configuration (required if not using database)
-     * @param databaseConfig   database configuration (required if using database)
-     * @throws NullPointerException if the appropriate config is null for the chosen storage mode
-     */
-    public StorageConfig(boolean usingDatabase, @Nullable BinaryFileConfig binaryFileConfig, @Nullable DatabaseConfig databaseConfig) {
-        if (usingDatabase) {
-            if (databaseConfig == null) {
-                throw new NullPointerException("databaseConfig cannot be null while using database");
-            }
-        } else if (binaryFileConfig == null) {
-            throw new NullPointerException("binaryFileConfig cannot be null while not using database");
-        }
-        this.usingDatabase = usingDatabase;
-        this.binaryFileConfig = binaryFileConfig;
-        this.databaseConfig = databaseConfig;
+    public static @NotNull StorageConfig local(@NotNull BinaryFileConfig binaryFileConfig) {
+        return new StorageConfig(false, binaryFileConfig, null);
+    }
+
+    public static @NotNull StorageConfig database(@NotNull DatabaseConfig databaseConfig) {
+        return new StorageConfig(true, null, databaseConfig);
     }
 }

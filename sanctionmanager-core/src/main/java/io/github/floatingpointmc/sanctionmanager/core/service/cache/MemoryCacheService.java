@@ -92,7 +92,9 @@ public class MemoryCacheService implements ICacheService {
         };
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull Optional<EntryPersisted> getById(long id) {
         // Use writeLock because entryById uses access-order, so get() modifies iteration order
@@ -104,7 +106,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull Optional<EntryPersisted> getByTypeAndRelId(@NotNull String typeId, long relId) {
         // Use writeLock because entryById uses access-order, so get() modifies iteration order
@@ -161,7 +165,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long getQueryGeneration() {
         lock.readLock().lock();
@@ -172,7 +178,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void putQueryResultIfGenerationMatches(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries, long expectedGeneration) {
         lock.writeLock().lock();
@@ -192,7 +200,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void put(@NotNull EntryPersisted entry) {
         lock.writeLock().lock();
@@ -217,7 +227,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void putQueryResult(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries) {
         lock.writeLock().lock();
@@ -240,7 +252,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invalidateById(long id) {
         lock.writeLock().lock();
@@ -259,7 +273,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invalidateByTypeAndRelId(@NotNull String typeId, long relId) {
         lock.writeLock().lock();
@@ -274,7 +290,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invalidateQueryResult(@NotNull QueryKey key) {
         lock.writeLock().lock();
@@ -285,7 +303,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invalidateAll() {
         lock.writeLock().lock();
@@ -299,7 +319,9 @@ public class MemoryCacheService implements ICacheService {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invalidateAllQueryResults() {
         lock.writeLock().lock();

@@ -119,7 +119,9 @@ import java.util.function.Function;
  * </p>
  */
 public class RedisCacheService implements ICacheService, AutoCloseable {
-    /** The prefix of every key written by this service. */
+    /**
+     * The prefix of every key written by this service.
+     */
     static final String DEFAULT_KEY_PREFIX = "sanctionmanager:cache:";
 
     private static final int FORMAT_VERSION = 1;
@@ -130,7 +132,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
     // Lua helpers that tolerate keys of the wrong type; used by write scripts so they can replace invalid data.
     private static final String LUA_HELPERS =
             "local function str(k) if redis.call('TYPE', k).ok == 'string' then return redis.call('GET', k) end return false end\n" +
-            "local function field(k, f) if redis.call('TYPE', k).ok == 'hash' then return redis.call('HGET', k, f) end return false end\n";
+                    "local function field(k, f) if redis.call('TYPE', k).ok == 'hash' then return redis.call('HGET', k, f) end return false end\n";
 
     // KEYS: entry key, rel key. ARGV: id, json, rel key prefix.
     private static final Script PUT_ENTRY = new Script(LUA_HELPERS +
@@ -165,39 +167,39 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
     // KEYS: rel key. ARGV: entry key prefix. Returns the entry JSON or nil.
     private static final Script GET_BY_REL = new Script(
             "local id = redis.call('GET', KEYS[1])\n" +
-            "if not id then return false end\n" +
-            "if not string.match(id, '^%-?%d+$') then\n" +
-            "  return redis.error_reply('invalid cached index value at ' .. KEYS[1])\n" +
-            "end\n" +
-            "local h = redis.call('HMGET', ARGV[1] .. id, 'r', 'd')\n" +
-            "if h[1] ~= KEYS[1] then return false end\n" +
-            "if not h[2] then return redis.error_reply('cached entry ' .. id .. ' has no data') end\n" +
-            "return h[2]\n");
+                    "if not id then return false end\n" +
+                    "if not string.match(id, '^%-?%d+$') then\n" +
+                    "  return redis.error_reply('invalid cached index value at ' .. KEYS[1])\n" +
+                    "end\n" +
+                    "local h = redis.call('HMGET', ARGV[1] .. id, 'r', 'd')\n" +
+                    "if h[1] ~= KEYS[1] then return false end\n" +
+                    "if not h[2] then return redis.error_reply('cached entry ' .. id .. ' has no data') end\n" +
+                    "return h[2]\n");
 
     // KEYS: generation key. ARGV: result key prefix, canonical query key, entry key prefix.
     // Returns {} on a miss, otherwise {ids JSON, entry JSON...}. A value not in the exact format written by
     // putQueryResult is returned without entries so that the caller rejects it instead of reporting a miss.
     private static final Script GET_QUERY = new Script(
             "local token = redis.call('GET', KEYS[1])\n" +
-            "if not token then return {} end\n" +
-            "local raw = redis.call('GET', ARGV[1] .. token .. ':' .. ARGV[2])\n" +
-            "if not raw then return {} end\n" +
-            "local body = string.match(raw, '^%[(.*)%]$')\n" +
-            "if not body then return {raw} end\n" +
-            "local ids = {}\n" +
-            "if body ~= '' then\n" +
-            "  for id in string.gmatch(body .. ',', '([^,]*),') do\n" +
-            "    if not string.match(id, '^%-?%d+$') then return {raw} end\n" +
-            "    ids[#ids + 1] = id\n" +
-            "  end\n" +
-            "end\n" +
-            "local out = {raw}\n" +
-            "for i = 1, #ids do\n" +
-            "  local d = redis.call('HGET', ARGV[3] .. ids[i], 'd')\n" +
-            "  if not d then return {} end\n" +
-            "  out[#out + 1] = d\n" +
-            "end\n" +
-            "return out\n");
+                    "if not token then return {} end\n" +
+                    "local raw = redis.call('GET', ARGV[1] .. token .. ':' .. ARGV[2])\n" +
+                    "if not raw then return {} end\n" +
+                    "local body = string.match(raw, '^%[(.*)%]$')\n" +
+                    "if not body then return {raw} end\n" +
+                    "local ids = {}\n" +
+                    "if body ~= '' then\n" +
+                    "  for id in string.gmatch(body .. ',', '([^,]*),') do\n" +
+                    "    if not string.match(id, '^%-?%d+$') then return {raw} end\n" +
+                    "    ids[#ids + 1] = id\n" +
+                    "  end\n" +
+                    "end\n" +
+                    "local out = {raw}\n" +
+                    "for i = 1, #ids do\n" +
+                    "  local d = redis.call('HGET', ARGV[3] .. ids[i], 'd')\n" +
+                    "  if not d then return {} end\n" +
+                    "  out[#out + 1] = d\n" +
+                    "end\n" +
+                    "return out\n");
 
     // KEYS: generation key. ARGV: result key prefix, members key prefix, canonical query key, ids JSON, new token.
     private static final Script PUT_QUERY = new Script(LUA_HELPERS +
@@ -267,7 +269,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @param config the Redis configuration. Cannot be null.
-     * @throws NullPointerException if {@code config} is null
+     * @throws NullPointerException     if {@code config} is null
      * @throws IllegalArgumentException if the host or port is invalid
      */
     public RedisCacheService(@NotNull RedisConfig config) {
@@ -279,7 +281,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      *
      * @param config    the Redis configuration. Cannot be null.
      * @param keyPrefix the prefix of every key. Cannot be null or empty.
-     * @throws NullPointerException if {@code config} or {@code keyPrefix} is null
+     * @throws NullPointerException     if {@code config} or {@code keyPrefix} is null
      * @throws IllegalArgumentException if the prefix is empty, or the host or port is invalid
      */
     RedisCacheService(@NotNull RedisConfig config, @NotNull String keyPrefix) {
@@ -303,7 +305,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * {@inheritDoc}
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails or the stored entry is invalid
+     * @throws OperationException  if the command fails or the stored entry is invalid
      */
     @Override
     public @NotNull Optional<EntryPersisted> getById(long id) {
@@ -322,7 +324,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * {@inheritDoc}
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails or the stored index or entry is invalid
+     * @throws OperationException  if the command fails or the stored index or entry is invalid
      */
     @Override
     public @NotNull Optional<EntryPersisted> getByTypeAndRelId(@NotNull String typeId, long relId) {
@@ -346,7 +348,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails or the stored result or an entry is invalid
+     * @throws OperationException  if the command fails or the stored result or an entry is invalid
      */
     @Override
     public @NotNull Optional<List<EntryPersisted>> getQueryResult(@NotNull QueryKey key) {
@@ -379,7 +381,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails or the entry cannot be serialized
+     * @throws OperationException  if the command fails or the entry cannot be serialized
      */
     @Override
     public void put(@NotNull EntryPersisted entry) {
@@ -393,7 +395,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * {@inheritDoc}
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails
+     * @throws OperationException  if the command fails
      */
     @Override
     public void putQueryResult(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries) {
@@ -409,7 +411,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * {@inheritDoc}
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails
+     * @throws OperationException  if the command fails
      */
     @Override
     public long getQueryGeneration() {
@@ -429,7 +431,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails
+     * @throws OperationException  if the command fails
      */
     @Override
     public void putQueryResultIfGenerationMatches(@NotNull QueryKey key, @NotNull List<EntryPersisted> entries, long expectedGeneration) {
@@ -446,7 +448,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails
+     * @throws OperationException  if the command fails
      */
     @Override
     public void invalidateById(long id) {
@@ -461,7 +463,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails
+     * @throws OperationException  if the command fails
      */
     @Override
     public void invalidateByTypeAndRelId(@NotNull String typeId, long relId) {
@@ -472,7 +474,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * {@inheritDoc}
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails
+     * @throws OperationException  if the command fails
      */
     @Override
     public void invalidateQueryResult(@NotNull QueryKey key) {
@@ -488,7 +490,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if a command fails
+     * @throws OperationException  if a command fails
      */
     @Override
     public void invalidateAll() {
@@ -514,7 +516,7 @@ public class RedisCacheService implements ICacheService, AutoCloseable {
      * </p>
      *
      * @throws ConnectionException if Redis cannot be reached
-     * @throws OperationException if the command fails
+     * @throws OperationException  if the command fails
      */
     @Override
     public void invalidateAllQueryResults() {

@@ -30,85 +30,113 @@ public class EntryWrapperImpl implements EntryWrapper {
      */
     public Entry entry;
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long getId() {
         return entry.getId();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long getRelId() {
         return entry.getRelId();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull EntryType getType() {
         return entry.getType();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull UUID getTarget() {
         return entry.getTarget();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull UUID getExecutor() {
         return entry.getExecutor();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull Date getExecutingTime() {
         return entry.getExecutingTime();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @Nullable String getReason() {
         return entry.getReason();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @Nullable Date getExpiryTime() {
         return entry.getExpiryTime();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @Nullable UUID getWithdrawnBy() {
         return entry.getWithdrawnBy();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @Nullable String getWithdrawalReason() {
         return entry.getWithdrawalReason();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isWithdrawn() {
         return entry.isWithdrawn();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isOverridden() {
         return entry.isOverridden();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @Nullable Long getOverriddenBy() {
         return entry.getOverriddenBy();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public @NotNull JsonObject getData() {
         return entry.getData();

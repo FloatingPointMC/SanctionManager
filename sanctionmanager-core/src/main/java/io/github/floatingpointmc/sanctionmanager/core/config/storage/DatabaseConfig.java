@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.sanctionmanager.core.config.storage;
 
 import io.github.floatingpointmc.sanctionmanager.api.credential.CredentialProvider;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -15,12 +16,20 @@ import org.jetbrains.annotations.NotNull;
  * {@code UnsupportedOperationException}.
  * </p>
  */
-@RequiredArgsConstructor
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 @Getter
 public final class DatabaseConfig {
-    /** JDBC URL for the database connection. */
+    /**
+     * JDBC URL for the database connection.
+     */
     private final @NotNull String jdbcUrl;
-    /** Provider for database credentials. */
-    private final @NotNull CredentialProvider credentialProvider;
     private final int maximumPoolSize;
+    /**
+     * Provider for database credentials.
+     */
+    private final @NotNull CredentialProvider credentialProvider;
+
+    public static @NotNull DatabaseConfig of(@NotNull String jdbcUrl, int maximumPoolSize, @NotNull CredentialProvider provider) {
+        return new DatabaseConfig(jdbcUrl, maximumPoolSize, provider);
+    }
 }
