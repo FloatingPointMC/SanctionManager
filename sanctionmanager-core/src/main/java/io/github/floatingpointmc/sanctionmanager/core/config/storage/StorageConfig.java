@@ -24,12 +24,14 @@ public final class StorageConfig {
     /**
      * Binary file configuration, non-null if {@code usingDatabase} is {@code false}.
      */
+    @Deprecated
     private final @Nullable BinaryFileConfig binaryFileConfig;
     /**
      * Database configuration, non-null if {@code usingDatabase} is {@code true}.
      */
     private final @Nullable DatabaseConfig databaseConfig;
 
+    @Deprecated
     public static @NotNull StorageConfig local(@NotNull BinaryFileConfig binaryFileConfig) {
         return new StorageConfig(false, binaryFileConfig, null);
     }

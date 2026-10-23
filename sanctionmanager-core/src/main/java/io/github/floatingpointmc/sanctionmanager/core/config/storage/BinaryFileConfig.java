@@ -17,6 +17,7 @@ import org.jetbrains.annotations.NotNull;
  */
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 @Getter
+@Deprecated
 public class BinaryFileConfig {
     /**
      * Path to the binary storage file.

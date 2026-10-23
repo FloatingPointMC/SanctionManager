@@ -27,6 +27,7 @@ import java.util.*;
  */
 @Slf4j
 @RequiredArgsConstructor
+@Deprecated
 public class BinaryFileStorageService implements IStorageService {
     private final SanctionManagerCore core;
     private final BinaryFileConfig config;
