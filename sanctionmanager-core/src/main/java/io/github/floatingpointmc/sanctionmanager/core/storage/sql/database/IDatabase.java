@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.sanctionmanager.core.storage.sql.database;
 
 import com.google.gson.JsonObject;
+import io.github.floatingpointmc.sanctionmanager.core.service.storage.Addition;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,5 +42,5 @@ public interface IDatabase {
      */
     void persistMetadata() throws SQLException;
 
-    void insert(@NotNull String tableName, @NotNull UUID target, @Nullable String reason, @NotNull Date executingTime, @Nullable Date expiryTime, @Nullable JsonObject data);
+    @NotNull Addition insert(@NotNull String typeName, @NotNull UUID target, @NotNull UUID executor, @Nullable String reason, @NotNull Date executingTime, @Nullable Date expiryTime, @Nullable JsonObject data);
 }

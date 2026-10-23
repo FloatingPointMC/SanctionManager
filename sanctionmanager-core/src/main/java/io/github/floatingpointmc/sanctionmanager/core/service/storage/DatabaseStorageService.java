@@ -87,12 +87,13 @@ public class DatabaseStorageService implements IStorageService {
             throw new IllegalStateException("Database not initialized");
         }
         try {
+            database.insert("sm_data_" + entry.getType(), entry.getTarget(), entry.getExecutor(), executingTime, expiryTime, entry.getDataInternal());
             if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) {
                 return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.SQLite) database).insertEntry(
                         entry.getType().getIdentifier(), entry.getTarget(),
                         entry.getExecutor(), entry.getReason(), executingTime, expiryTime, entry.getDataInternal());
             } else if (database instanceof io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) {
-                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).insertEntry(
+                return ((io.github.floatingpointmc.sanctionmanager.core.storage.sql.database.MySQL) database).insert(
                         entry.getType().getIdentifier(), entry.getTarget(),
                         entry.getExecutor(), entry.getReason(), executingTime, expiryTime, entry.getDataInternal());
             } else {

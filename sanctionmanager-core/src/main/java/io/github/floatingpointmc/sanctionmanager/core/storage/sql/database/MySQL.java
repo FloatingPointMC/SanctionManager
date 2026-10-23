@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.zaxxer.hikari.HikariDataSource;
 import io.github.floatingpointmc.sanctionmanager.api.model.EntryType;
 import io.github.floatingpointmc.sanctionmanager.core.SanctionManagerCore;
+import io.github.floatingpointmc.sanctionmanager.core.model.EntrySnapshot;
 import io.github.floatingpointmc.sanctionmanager.core.service.storage.Addition;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -92,10 +93,10 @@ public class MySQL implements IDatabase {
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
     private static final String INSERT =
-            "INSERT INTO %s ";
+            "INSERT INTO %s (parent_id, executor, expiry_time, execution_time, status, reason) VALUES (?, ?, ?, ?, ?, ?)";
 
     private static final String INSERT_EXTRA =
-            "INSERT INTO %s ";
+            "INSERT INTO %s (parent_id, executor, expiry_time, execution_time, status, reason, extra_data) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
     private static byte[] uuidToBytes(@NotNull UUID uuid) {
         return ByteBuffer.allocate(16)
@@ -616,23 +617,13 @@ public class MySQL implements IDatabase {
         // Metadata is currently only persisted for binary file storage.
     }
 
-    @Override
-    public void insert(@NotNull String tableName, @NotNull UUID target, @Nullable String reason, @NotNull Date executingTime, @Nullable Date expiryTime, @Nullable JsonObject data) {
-        try (Connection connection = dataSource.getConnection()) {
-            try (PreparedStatement statement = connection.prepareStatement(data == null ? INSERT : INSERT_EXTRA)) {
-                statement.setBytes(1, uuidToBytes(target));
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     /**
      * Inserts a new entry and returns global and type-relative IDs.
      */
-    public Addition insertEntry(@NotNull String typeId, @NotNull UUID target, @NotNull UUID executor,
-                                @Nullable String reason, @NotNull Date executingTime,
-                                @Nullable Date expiryTime, @Nullable JsonObject data) throws SQLException {
+    @Override
+    public @NotNull Addition insert(@NotNull String typeName, @NotNull UUID target, @NotNull UUID executor,
+                                    @Nullable String reason, @NotNull Date executingTime,
+                                    @Nullable Date expiryTime, @Nullable JsonObject data) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
             try {
@@ -640,7 +631,7 @@ public class MySQL implements IDatabase {
                 long parentId;
                 try (PreparedStatement pstmt = connection.prepareStatement(insertParent, Statement.RETURN_GENERATED_KEYS)) {
                     pstmt.setBytes(1, uuidToBytes(target));
-                    pstmt.setString(2, typeId);
+                    pstmt.setString(2, typeName);
                     pstmt.executeUpdate();
                     try (ResultSet keys = pstmt.getGeneratedKeys()) {
                         if (keys.next()) {
@@ -651,13 +642,10 @@ public class MySQL implements IDatabase {
                     }
                 }
 
-                String dataTableName = "sm_data_" + typeId;
-                String insertData = data == null
-                        ? "INSERT INTO " + dataTableName + " (parent_id, executor, expiry_time, execution_time, status, reason) VALUES (?, ?, ?, ?, ?, ?)"
-                        : "INSERT INTO " + dataTableName + " (parent_id, executor, expiry_time, execution_time, status, reason, extra_data) VALUES (?, ?, ?, ?, ?, ?, ?)";
-
+                String dataTableName = "sm_data_" + typeName;
+                String insertData = data == null ? INSERT : INSERT_EXTRA;
                 long relId;
-                try (PreparedStatement pstmt = connection.prepareStatement(insertData, Statement.RETURN_GENERATED_KEYS)) {
+                try (PreparedStatement pstmt = connection.prepareStatement(String.format(insertData, dataTableName), Statement.RETURN_GENERATED_KEYS)) {
                     pstmt.setLong(1, parentId);
                     pstmt.setBytes(2, uuidToBytes(executor));
                     pstmt.setTimestamp(3, expiryTime != null ? new java.sql.Timestamp(expiryTime.getTime()) : null);
